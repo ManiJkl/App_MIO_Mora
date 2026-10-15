@@ -3,6 +3,8 @@
    ========================================================================== */
 
 const RENDER_API_BASE = 'https://mio-backend-mora.onrender.com/api/buses';
+const RENDER_ROUTE_BASE = 'https://mio-backend-mora.onrender.com/api/recorrido';
+const RENDER_STOPS_BASE = 'https://mio-backend-mora.onrender.com/api/paradas';
 
 const TARGET_ROUTES = [
     {
@@ -43,6 +45,10 @@ const TARGET_ROUTES = [
 let selectedRoutes = ['T12', 'P40B', 'A11', 'A14A']; // All enabled by default
 let busDataByRoute = {};
 let mapMarkers = {};
+let routePointsByRoute = {};
+let routeLayers = {};
+let stopDataByRoute = {};
+let stopLayersByRoute = {};
 let map = null;
 let tileLayer = null;
 let autoRefreshTimer = null;
@@ -251,6 +257,16 @@ function toggleRouteSelection(routeId) {
         selectedRoutes.push(routeId);
     }
     renderRouteCards();
+    updateRoutePaths();
+    updateRouteStops();
+    if (selectedRoutes.includes(routeId)) {
+        if (!routePointsByRoute[routeId]) {
+            fetchRoutePath(routeId);
+        }
+        if (!stopDataByRoute[routeId]) {
+            fetchRouteStops(routeId);
+        }
+    }
     updateMapAndList();
 }
 
@@ -296,6 +312,8 @@ async function fetchActiveRoutesData() {
     });
 
     await Promise.all(promises);
+    await Promise.all(selectedRoutes.map(routeId => fetchRoutePath(routeId)));
+    await Promise.all(selectedRoutes.map(routeId => fetchRouteStops(routeId)));
 
     refreshIcon.classList.remove('fa-spin');
 
@@ -311,6 +329,144 @@ async function fetchActiveRoutesData() {
 
     renderRouteCards();
     updateMapAndList();
+}
+
+async function fetchRoutePath(routeId) {
+    if (routePointsByRoute[routeId]) {
+        return;
+    }
+
+    const routePathId = encodeURIComponent(routeId.toLowerCase());
+
+    try {
+        const response = await fetch(`${RENDER_ROUTE_BASE}/${routePathId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        const points = Array.isArray(json.puntos) ? json.puntos : [];
+        const validPoints = points
+            .map(point => [
+                parseFloat(point.latitud),
+                parseFloat(point.longitud)
+            ])
+            .filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
+
+        if (validPoints.length < 2) {
+            throw new Error('La respuesta no contiene al menos dos puntos válidos');
+        }
+
+        routePointsByRoute[routeId] = validPoints;
+        updateRoutePaths();
+    } catch (err) {
+        console.warn(`Error al consultar recorrido de ruta ${routeId}:`, err);
+    }
+}
+
+function updateRoutePaths() {
+    const selectedRouteSet = new Set(selectedRoutes);
+
+    Object.keys(routeLayers).forEach(routeId => {
+        if (!selectedRouteSet.has(routeId)) {
+            map.removeLayer(routeLayers[routeId]);
+            delete routeLayers[routeId];
+        }
+    });
+
+    selectedRoutes.forEach(routeId => {
+        const routeMeta = TARGET_ROUTES.find(route => route.id === routeId);
+        const points = routePointsByRoute[routeId];
+
+        if (!routeMeta || !points || routeLayers[routeId]) {
+            return;
+        }
+
+        routeLayers[routeId] = L.polyline(points, {
+            color: routeMeta.color,
+            weight: 5,
+            opacity: 0.85,
+            lineCap: 'round',
+            lineJoin: 'round'
+        }).addTo(map);
+    });
+}
+
+async function fetchRouteStops(routeId) {
+    if (stopDataByRoute[routeId]) {
+        return;
+    }
+
+    const routePathId = encodeURIComponent(routeId.toLowerCase());
+
+    try {
+        const response = await fetch(`${RENDER_STOPS_BASE}/${routePathId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        const stops = Array.isArray(json.paradas)
+            ? json.paradas
+            : Array.isArray(json)
+                ? json
+                : [json];
+
+        const validStops = stops
+            .map(stop => ({
+                id: stop.id,
+                nombre: stop.nombre || 'Parada sin nombre',
+                lat: parseFloat(stop.lat),
+                lng: parseFloat(stop.lng)
+            }))
+            .filter(stop => !isNaN(stop.lat) && !isNaN(stop.lng));
+
+        if (validStops.length === 0) {
+            throw new Error('La respuesta no contiene paradas válidas');
+        }
+
+        stopDataByRoute[routeId] = validStops;
+        updateRouteStops();
+    } catch (err) {
+        console.warn(`Error al consultar paradas de ruta ${routeId}:`, err);
+    }
+}
+
+function updateRouteStops() {
+    const selectedRouteSet = new Set(selectedRoutes);
+
+    Object.keys(stopLayersByRoute).forEach(routeId => {
+        if (!selectedRouteSet.has(routeId)) {
+            stopLayersByRoute[routeId].forEach(stopLayer => map.removeLayer(stopLayer));
+            delete stopLayersByRoute[routeId];
+        }
+    });
+
+    selectedRoutes.forEach(routeId => {
+        const routeMeta = TARGET_ROUTES.find(route => route.id === routeId);
+        const stops = stopDataByRoute[routeId];
+
+        if (!routeMeta || !stops || stopLayersByRoute[routeId]) {
+            return;
+        }
+
+        stopLayersByRoute[routeId] = stops.map(stop => L.circleMarker([stop.lat, stop.lng], {
+            radius: 5,
+            color: '#ffffff',
+            weight: 1.5,
+            fillColor: routeMeta.color,
+            fillOpacity: 1
+        })
+            .bindPopup(`
+                <div class="p-1">
+                    <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
+                    <div class="text-[10px] text-gray-400">Ruta: ${routeMeta.id}</div>
+                    <div class="text-[10px] text-gray-400">ID: ${stop.id || 'No disponible'}</div>
+                    <div class="text-[10px] text-gray-400">Coordenadas: ${stop.lat}, ${stop.lng}</div>
+                </div>
+            `)
+            .addTo(map));
+    });
 }
 
 /* ==========================================================================
