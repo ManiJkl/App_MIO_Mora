@@ -34,31 +34,31 @@
     <!-- Custom Stylesheet -->
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-900 text-gray-100 h-full font-sans antialiased flex flex-col overflow-hidden">
+<body class="app-shell text-gray-100 h-full font-sans antialiased flex flex-col overflow-hidden">
 
     <!-- Top Navigation Bar -->
-    <header class="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/60 sticky top-0 z-30 px-4 py-3 shadow-lg">
+    <header class="app-header sticky top-0 z-30 px-4 py-3">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                    <i class="fa-solid fa-bus text-xl"></i>
+                <div class="brand-mark">
+                    <i class="fa-solid fa-bus-simple"></i>
                 </div>
                 <div>
-                    <h1 class="font-black text-lg sm:text-xl tracking-tight bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
+                    <h1 class="brand-title">
                         MIO Tracker Cali
                     </h1>
-                    <p class="text-[11px] text-gray-400 font-medium">Panel Personalizado de Rutas</p>
+                    <p class="brand-subtitle">Movilidad en tiempo real</p>
                 </div>
             </div>
 
             <!-- Header Status Badges & Controls -->
             <div class="flex items-center gap-2">
-                <div id="statusBadge" class="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 bg-blue-900/40 text-blue-300 border border-blue-700/50">
-                    <span id="statusDot" class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                <div id="statusBadge" class="status-badge">
+                    <span id="statusDot" class="status-dot bg-blue-400 animate-pulse"></span>
                     <span id="statusText" class="hidden sm:inline">Conectando...</span>
                 </div>
 
-                <button onclick="fetchActiveRoutesData()" title="Refrescar Ubicaciones" class="p-2.5 rounded-xl bg-gray-700/60 hover:bg-gray-600 text-gray-200 transition-colors border border-gray-600/50">
+                <button onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" class="icon-button">
                     <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm"></i>
                 </button>
             </div>
@@ -66,19 +66,19 @@
     </header>
 
     <!-- Main Layout Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4 overflow-hidden relative">
+    <main class="app-main flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4 overflow-hidden relative">
         
         <!-- Sidebar Controls & Favorite Routes -->
-        <aside class="w-full lg:w-96 flex flex-col gap-4 flex-shrink-0 z-20">
+        <aside class="app-sidebar w-full lg:w-96 flex flex-col gap-4 flex-shrink-0 z-20">
             
             <!-- Quick Route Selector -->
-            <div class="bg-gray-800/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-gray-700/60 flex flex-col gap-3">
+            <div class="surface-card route-selector flex flex-col gap-3">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <i class="fa-solid fa-star text-amber-400"></i>
-                        Mis Rutas Preferidas
+                    <h2 class="section-title">
+                        <i class="fa-solid fa-sliders text-blue-400"></i>
+                        Rutas activas
                     </h2>
-                    <span id="selectedCount" class="text-[11px] bg-blue-900/60 text-blue-300 px-2.5 py-0.5 rounded-full font-bold border border-blue-700/40">
+                    <span id="selectedCount" class="count-pill">
                         0 activas
                     </span>
                 </div>
@@ -90,12 +90,13 @@
             </div>
 
             <!-- Nearest Stop Information -->
-            <div class="bg-gray-800/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-gray-700/60 flex-1 flex flex-col min-h-[220px] lg:min-h-0 overflow-hidden">
-                <div class="flex items-center justify-between border-b border-gray-700/60 pb-2.5 mb-3">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+            <div class="surface-card nearest-card flex-1 flex flex-col min-h-[220px] lg:min-h-0 overflow-hidden">
+                <div class="card-heading">
+                    <h3 class="section-title">
                         <i class="fa-solid fa-location-dot text-emerald-400"></i>
                         Parada más cercana
                     </h3>
+                    <span class="live-label"><span></span> EN VIVO</span>
                 </div>
 
                 <div id="nearestStopContainer" class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -110,18 +111,18 @@
         </aside>
 
         <!-- Interactive Map Display -->
-        <section class="flex-1 flex flex-col bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-700/60 overflow-hidden relative min-h-[350px] lg:min-h-0">
+        <section class="map-shell flex-1 flex flex-col overflow-hidden relative min-h-[350px] lg:min-h-0">
             
             <!-- Floating Map Controls -->
             <div class="absolute top-3 left-3 right-3 z-[1000] flex justify-between items-center pointer-events-none">
-                <div class="pointer-events-auto bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-semibold text-gray-300 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <div class="map-status pointer-events-auto">
+                    <span class="status-dot bg-emerald-500 animate-ping"></span>
                     <span>API: <code class="text-blue-400 font-mono">mio-backend-mora</code></span>
                 </div>
 
                 <div class="pointer-events-auto flex items-center gap-2">
                     <label for="mapMode" class="sr-only">Modo del mapa</label>
-                    <div class="bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700/80 shadow-lg flex items-center gap-2 px-2.5">
+                    <div class="map-control">
                         <i class="fa-solid fa-layer-group text-blue-400 text-xs" aria-hidden="true"></i>
                         <select id="mapMode" onchange="changeMapMode(this.value)" title="Cambiar modo del mapa" class="map-mode-select bg-transparent text-xs font-bold text-gray-200 py-1.5 outline-none cursor-pointer">
                             <!-- <option value="dark">Oscuro</option> NO SIRVE -->
@@ -130,11 +131,11 @@
                             <option value="terrain">Terreno</option>
                         </select>
                     </div>
-                    <button onclick="recenterMap()" title="Centrar mapa en Cali" class="bg-gray-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-bold text-gray-200 hover:bg-gray-800 transition-all flex items-center gap-2">
+                    <button onclick="recenterMap()" title="Centrar mapa en Cali" class="map-button">
                         <i class="fa-solid fa-crosshairs text-blue-400"></i>
                         <span class="hidden sm:inline">Centrar</span>
                     </button>
-                    <button id="locateMeButton" onclick="locateUser()" title="Activar seguimiento de ubicación" class="bg-gray-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-bold text-gray-200 hover:bg-gray-800 transition-all flex items-center gap-2">
+                    <button id="locateMeButton" onclick="locateUser()" title="Activar seguimiento de ubicación" class="map-button map-button-accent">
                         <i id="locateMeIcon" class="fa-solid fa-location-crosshairs text-emerald-400"></i>
                         <span class="hidden sm:inline">Seguimiento</span>
                     </button>
@@ -145,7 +146,7 @@
             <div id="map" class="w-full h-full z-10 min-h-[350px]"></div>
 
             <!-- Map Bottom Legend -->
-            <div class="bg-gray-900/90 border-t border-gray-700/60 px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-400 z-20">
+            <div class="map-legend px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-400 z-20">
                 <div class="flex items-center gap-3">
                     <span class="text-gray-500">Buses:</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> T12</span>
