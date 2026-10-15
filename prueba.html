@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIO Cali Tracker</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet CSS & JS sin hashes corruptos -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    #map { height: calc(100vh - 70px); width: 100%; }
+    .bus-marker {
+      background-color: #ef4444;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white font-sans antialiased overflow-hidden">
+
+  <!-- Header / Navbar -->
+  <header class="h-[70px] bg-slate-800 border-b border-slate-700 px-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 p-2 rounded-lg text-white font-bold">
+        <i class="fa-solid fa-bus"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold leading-tight">MIO Tracker Cali</h1>
+        <p id="status-text" class="text-xs text-slate-400">Selecciona una ruta</p>
+      </div>
+    </div>
+
+    <!-- Botones de Rutas Rápidas -->
+    <div class="flex gap-2">
+      <button onclick="cargarRuta('T12')" class="btn-ruta bg-slate-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition">T12</button>
+      <button onclick="cargarRuta('P40B')" class="btn-ruta bg-slate-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition">P40B</button>
+      <button onclick="cargarRuta('A11')" class="btn-ruta bg-slate-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition">A11</button>
+      <button onclick="cargarRuta('A14A')" class="btn-ruta bg-slate-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition">A14A</button>
+    </div>
+
+    <button onclick="recenterMap()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 p-2 rounded-lg text-sm transition">
+      <i class="fa-solid fa-crosshairs"></i>
+    </button>
+  </header>
+
+  <!-- Mapa -->
+  <div id="map"></div>
+
+  <script>
+    const API_URL = "https://mio-backend-mora.onrender.com/api/buses/";
+    const CALI_COORDS = [3.4516, -76.5320];
+    
+    let map;
+    let busMarkers = [];
+    let currentRoute = 'T12';
+    let timerInterval = null;
+
+    // Inicializar Mapa
+    function initMap() {
+      map = L.map('map').setView(CALI_COORDS, 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      cargarRuta(currentRoute);
+    }
+
+    function recenterMap() {
+      map.setView(CALI_COORDS, 13);
+    }
+
+    async function cargarRuta(ruta) {
+      currentRoute = ruta;
+      document.getElementById('status-text').innerText = `Consultando ruta ${ruta}...`;
+      
+      // Resaltar botón activo
+      document.querySelectorAll('.btn-ruta').forEach(btn => {
+        if(btn.innerText === ruta) {
+          btn.classList.add('bg-blue-600');
+          btn.classList.remove('bg-slate-700');
+        } else {
+          btn.classList.remove('bg-blue-600');
+          btn.classList.add('bg-slate-700');
+        }
+      });
+
+      await obtenerBuses();
+
+      // Programar refresco automático cada 12 segundos
+      if(timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(obtenerBuses, 12000);
+    }
+
+    async function obtenerBuses() {
+      try {
+        const response = await fetch(`${API_URL}${currentRoute}`);
+        const data = await response.json();
+
+        // Limpiar marcadores viejos
+        busMarkers.forEach(marker => map.removeLayer(marker));
+        busMarkers = [];
+
+        if (data.status === "ok" && Array.isArray(data.buses) && data.buses.length > 0) {
+          document.getElementById('status-text').innerText = `Ruta ${currentRoute}: ${data.buses.length} buses activos`;
+
+          data.buses.forEach(bus => {
+            const lat = parseFloat(bus.latitud || bus.lat);
+            const lng = parseFloat(bus.longitud || bus.lng || bus.lon);
+            const id = bus.idVehiculo || bus.bus || 'MIO';
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+              const customIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="bus-marker text-xs">${currentRoute}</div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+              });
+
+              const marker = L.marker([lat, lng], { icon: customIcon })
+                .addTo(map)
+                .bindPopup(`<b>Bus MIO: ${id}</b><br>Ruta: ${currentRoute}`);
+
+              busMarkers.push(marker);
+            }
+          });
+        } else {
+          document.getElementById('status-text').innerText = `Ruta ${currentRoute}: Sin buses reportando en este momento`;
+        }
+      } catch (error) {
+        document.getElementById('status-text').innerText = `Error / Despertando servidor en Render...`;
+        console.error("Error al obtener buses:", error);
+      }
+    }
+
+    // Arrancar la aplicación al cargar el DOM
+    document.addEventListener('DOMContentLoaded', initMap);
+  </script>
+</body>
+</html>
