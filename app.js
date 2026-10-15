@@ -334,14 +334,14 @@ function updateMapAndList() {
             // Extract coordinates & properties flexible to SIUR variations
             const lat = parseFloat(bus.latitud || bus.lat || bus.latitude);
             const lng = parseFloat(bus.longitud || bus.lng || bus.longitude);
-            const busCode = bus.idVehiculo || bus.codigo || bus.busId || `${routeId}-${index}`;
+            const busCode = bus.id || bus.numeroBus || bus.idVehiculo || bus.codigo || bus.busId || `${routeId}-${index}`;
             const busKey = `${routeId}_${busCode}`;
 
             currentBusCodes.add(busKey);
 
             if (!isNaN(lat) && !isNaN(lng)) {
                 // Update or create Leaflet map marker
-                renderBusMarker(busKey, lat, lng, routeMeta, busCode);
+                renderBusMarker(busKey, lat, lng, routeMeta, busCode, bus);
             }
 
             // Append card to active list sidebar
@@ -361,7 +361,9 @@ function updateMapAndList() {
                     </div>
                     <div>
                         <div class="font-bold text-xs text-gray-200">Bus ${busCode}</div>
-                        <div class="text-[10px] text-gray-400">${routeMeta.name}</div>
+                        <div class="text-[10px] text-gray-400">${bus.nombreLinea || routeMeta.name}</div>
+                        <div class="text-[10px] text-gray-400">${bus.origen || bus.paradaInicial || 'Origen no disponible'} &rarr; ${bus.destino || bus.paradaFinal || 'Destino no disponible'}</div>
+                        <div class="text-[10px] text-gray-500">GPS: ${bus.lat ?? bus.latitud ?? lat}, ${bus.lng ?? bus.longitud ?? lng}</div>
                     </div>
                 </div>
                 <div class="text-right">
@@ -395,7 +397,7 @@ function updateMapAndList() {
     }
 }
 
-function renderBusMarker(key, lat, lng, routeMeta, busCode) {
+function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
     const iconHtml = `
         <div class="relative flex items-center justify-center">
             <div class="absolute w-7 h-7 rounded-full opacity-40 bus-pulse-ring" style="background-color: ${routeMeta.color}"></div>
@@ -418,20 +420,27 @@ function renderBusMarker(key, lat, lng, routeMeta, busCode) {
     if (mapMarkers[key]) {
         mapMarkers[key].setLatLng([lat, lng]);
         mapMarkers[key].setIcon(customIcon);
+        mapMarkers[key].setPopupContent(createBusPopupContent(routeMeta, busCode, bus));
     } else {
         const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
 
-        marker.bindPopup(`
-            <div class="p-1">
-                <div class="flex items-center gap-2 border-b border-gray-700 pb-1 mb-1">
-                    <span class="font-extrabold text-sm text-gray-100">${routeMeta.id}</span>
-                    <span class="text-[10px] text-gray-400">Código: ${busCode}</span>
-                </div>
-                <p class="text-xs text-gray-300 font-medium">${routeMeta.name}</p>
-                <p class="text-[10px] text-emerald-400 font-bold mt-1">● Reportando ubicación GPS</p>
-            </div>
-        `);
+        marker.bindPopup(createBusPopupContent(routeMeta, busCode, bus));
 
         mapMarkers[key] = marker;
     }
+}
+
+function createBusPopupContent(routeMeta, busCode, bus) {
+    return `
+            <div class="p-1">
+                <div class="flex items-center gap-2 border-b border-gray-700 pb-1 mb-1">
+                    <span class="font-extrabold text-sm text-gray-100">${routeMeta.id}</span>
+                    <span class="text-[10px] text-gray-400">Bus: ${busCode}</span>
+                </div>
+                <p class="text-xs text-gray-300 font-medium">Línea: ${bus.nombreLinea || routeMeta.name}</p>
+                <p class="text-[10px] text-gray-400">Recorrido: ${bus.origen || bus.paradaInicial || 'Origen no disponible'} &rarr; ${bus.destino || bus.paradaFinal || 'Destino no disponible'}</p>
+                <p class="text-[10px] text-gray-400">Coordenadas: ${bus.lat ?? bus.latitud ?? 'No disponible'}, ${bus.lng ?? bus.longitud ?? 'No disponible'}</p>
+                <p class="text-[10px] text-emerald-400 font-bold mt-1">● Reportando ubicación GPS</p>
+            </div>
+        `;
 }
