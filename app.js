@@ -5,6 +5,7 @@
 const RENDER_API_BASE = 'https://mio-backend-mora.onrender.com/api/buses';
 const RENDER_ROUTE_BASE = 'https://mio-backend-mora.onrender.com/api/recorrido';
 const RENDER_STOPS_BASE = 'https://mio-backend-mora.onrender.com/api/paradas';
+const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas';
 
 const TARGET_ROUTES = [
     {
@@ -450,23 +451,114 @@ function updateRouteStops() {
             return;
         }
 
-        stopLayersByRoute[routeId] = stops.map(stop => L.circleMarker([stop.lat, stop.lng], {
-            radius: 5,
-            color: '#ffffff',
-            weight: 1.5,
-            fillColor: routeMeta.color,
-            fillOpacity: 1
-        })
-            .bindPopup(`
-                <div class="p-1">
-                    <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
-                    <div class="text-[10px] text-gray-400">Ruta: ${routeMeta.id}</div>
-                    <div class="text-[10px] text-gray-400">ID: ${stop.id || 'No disponible'}</div>
-                    <div class="text-[10px] text-gray-400">Coordenadas: ${stop.lat}, ${stop.lng}</div>
-                </div>
-            `)
-            .addTo(map));
+        stopLayersByRoute[routeId] = stops.map(stop => {
+            const stopLayer = L.circleMarker([stop.lat, stop.lng], {
+                radius: 5,
+                color: '#ffffff',
+                weight: 1.5,
+                fillColor: routeMeta.color,
+                fillOpacity: 1
+            }).bindPopup(createStopPopupContent(stop, routeMeta));
+
+            stopLayer.on('click', () => fetchStopArrivals(stop, routeMeta, stopLayer));
+            stopLayer.addTo(map);
+            return stopLayer;
+        });
     });
+}
+
+function createStopPopupContent(stop, routeMeta, message = 'Haz clic en la parada para consultar llegadas.') {
+    return `
+        <div class="p-1 min-w-[220px]">
+            <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
+            <div class="text-[10px] text-gray-400">Ruta: ${routeMeta.id}</div>
+            <div class="text-[10px] text-gray-400">ID: ${stop.id || 'No disponible'}</div>
+            <div class="text-[10px] text-gray-400 mb-2">Coordenadas: ${stop.lat}, ${stop.lng}</div>
+            ${message}
+        </div>
+    `;
+}
+
+async function fetchStopArrivals(stop, routeMeta, stopLayer) {
+    if (!stop.id) {
+        stopLayer.setPopupContent(createStopPopupContent(
+            stop,
+            routeMeta,
+            '<div class="text-xs text-red-300">Esta parada no tiene un ID válido para consultar llegadas.</div>'
+        ));
+        return;
+    }
+
+    stopLayer.setPopupContent(createStopPopupContent(
+        stop,
+        routeMeta,
+        '<div class="text-xs text-blue-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>'
+    ));
+
+    try {
+        const stopId = encodeURIComponent(stop.id);
+        const response = await fetch(`${RENDER_ARRIVALS_BASE}/${stopId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        const arrivals = json.datos && Array.isArray(json.datos.buses)
+            ? json.datos.buses
+            : [];
+
+        const arrivalsContent = arrivals.length > 0
+            ? `
+                <div class="text-[10px] font-bold text-gray-300 mb-1">
+                    Próximas llegadas${json.datos.nombreParada ? ` · ${json.datos.nombreParada}` : ''}
+                </div>
+                <div class="space-y-1">
+                    ${sortArrivalsByCountdown(arrivals).map(arrival => `
+                        <div class="flex items-center justify-between gap-3 text-[10px]">
+                            <span class="text-gray-300">
+                                <strong>${arrival.nombreLinea || 'Línea no disponible'}</strong>
+                                · ${arrival.nombreDestino || 'Destino no disponible'}
+                                <br><span class="text-gray-500">Bus ${arrival.numeroDeBus || 'No disponible'}</span>
+                            </span>
+                            <span class="font-bold text-emerald-400 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `
+            : '<div class="text-xs text-gray-400">No hay buses próximos reportados.</div>';
+
+        stopLayer.setPopupContent(createStopPopupContent(stop, routeMeta, arrivalsContent));
+    } catch (err) {
+        console.warn(`Error al consultar llegadas de la parada ${stop.id}:`, err);
+        stopLayer.setPopupContent(createStopPopupContent(
+            stop,
+            routeMeta,
+            '<div class="text-xs text-red-300">No se pudieron consultar las llegadas. Intenta nuevamente.</div>'
+        ));
+    }
+}
+
+function sortArrivalsByCountdown(arrivals) {
+    return [...arrivals].sort((first, second) => {
+        const firstMinutes = parseCountdownMinutes(first.cuentaRegresiva);
+        const secondMinutes = parseCountdownMinutes(second.cuentaRegresiva);
+        return firstMinutes - secondMinutes;
+    });
+}
+
+function parseCountdownMinutes(countdown) {
+    if (typeof countdown !== 'string') {
+        return Number.POSITIVE_INFINITY;
+    }
+
+    const normalizedCountdown = countdown.replace(',', '.').trim().toLowerCase();
+    const timeMatch = normalizedCountdown.match(/^(\d+):(\d+)/);
+    if (timeMatch) {
+        return Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
+    }
+
+    const minutesMatch = normalizedCountdown.match(/^(\d+(?:\.\d+)?)/);
+    return minutesMatch ? Number(minutesMatch[1]) : Number.POSITIVE_INFINITY;
 }
 
 /* ==========================================================================
