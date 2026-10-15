@@ -59,6 +59,8 @@ let userLocationAccuracy = null;
 let userCoordinates = null;
 let locationWatchId = null;
 let locationRequestInProgress = false;
+let nearestStopKey = null;
+let nearestArrivalsRequestId = 0;
 
 const MAP_MODES = {
     dark: {
@@ -163,7 +165,6 @@ function startLocationTracking() {
 function updateUserLocation(position) {
     const { latitude, longitude, accuracy } = position.coords;
     const userLatLng = [latitude, longitude];
-    const shouldCenterMap = !userLocationMarker;
     userCoordinates = { lat: latitude, lng: longitude };
 
     if (userLocationMarker) {
@@ -193,9 +194,7 @@ function updateUserLocation(position) {
         .addTo(map)
         .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
 
-    if (shouldCenterMap) {
-        map.flyTo(userLatLng, 16, { duration: 1 });
-    }
+    map.flyTo(userLatLng, 16, { duration: 1 });
 
     document.getElementById('lastUpdated').innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
     updateNearestStopPanel();
@@ -618,6 +617,8 @@ function updateNearestStopPanel() {
 
     const nearestStop = findNearestStop();
     if (!nearestStop) {
+        nearestStopKey = null;
+        nearestArrivalsRequestId += 1;
         container.innerHTML = `
             <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
                 <i class="fa-solid fa-road-barrier text-2xl mb-2 text-amber-400/70"></i>
@@ -628,6 +629,7 @@ function updateNearestStopPanel() {
         return;
     }
 
+    const stopKey = `${nearestStop.route.id}:${nearestStop.stop.id || `${nearestStop.stop.lat},${nearestStop.stop.lng}`}`;
     const distance = getDistanceInMeters(
         userCoordinates.lat,
         userCoordinates.lng,
@@ -635,25 +637,36 @@ function updateNearestStopPanel() {
         nearestStop.stop.lng
     );
 
-    container.innerHTML = `
-        <div class="rounded-xl bg-gradient-to-br from-emerald-900/40 to-gray-700/40 border border-emerald-700/40 p-3">
-            <div class="flex items-start justify-between gap-2">
-                <div>
-                    <div class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">Más cercana · ${formatDistance(distance)}</div>
-                    <h4 class="text-sm font-extrabold text-gray-100 mt-1">${nearestStop.stop.nombre}</h4>
+    if (nearestStopKey !== stopKey) {
+        nearestStopKey = stopKey;
+        container.innerHTML = `
+            <div data-nearest-stop-key="${stopKey}" class="rounded-xl bg-gradient-to-br from-emerald-900/40 to-gray-700/40 border border-emerald-700/40 p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">Más cercana · <span id="nearestStopDistance">${formatDistance(distance)}</span></div>
+                        <h4 class="text-sm font-extrabold text-gray-100 mt-1">${nearestStop.stop.nombre}</h4>
+                    </div>
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full text-white" style="background-color: ${nearestStop.route.color}">
+                        ${nearestStop.route.id}
+                    </span>
                 </div>
-                <span class="text-[10px] font-bold px-2 py-1 rounded-full text-white" style="background-color: ${nearestStop.route.color}">
-                    ${nearestStop.route.id}
-                </span>
+                <div class="text-[10px] text-gray-400 mt-1">ID: ${nearestStop.stop.id || 'No disponible'}</div>
+                <div id="nearestArrivalsStatus" class="mt-3 text-xs text-blue-300" aria-live="polite">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...
+                </div>
+                <div id="nearestArrivals" class="mt-2">
+                    <div class="text-xs text-gray-400">Esperando información de llegadas...</div>
+                </div>
             </div>
-            <div class="text-[10px] text-gray-400 mt-1">ID: ${nearestStop.stop.id || 'No disponible'}</div>
-            <div id="nearestArrivals" class="mt-3">
-                <div class="text-xs text-blue-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>
-            </div>
-        </div>
-    `;
+        `;
+    } else {
+        const distanceElement = document.getElementById('nearestStopDistance');
+        if (distanceElement) {
+            distanceElement.innerText = formatDistance(distance);
+        }
+    }
 
-    fetchNearestStopArrivals(nearestStop.stop, nearestStop.route);
+    fetchNearestStopArrivals(nearestStop.stop, nearestStop.route, stopKey);
 }
 
 function findNearestStop() {
@@ -687,11 +700,15 @@ function findNearestStop() {
     return nearestStop;
 }
 
-async function fetchNearestStopArrivals(stop, route) {
+async function fetchNearestStopArrivals(stop, route, stopKey) {
     const arrivalsContainer = document.getElementById('nearestArrivals');
-    if (!arrivalsContainer || !stop.id) {
+    const statusContainer = document.getElementById('nearestArrivalsStatus');
+    if (!arrivalsContainer || !statusContainer || !stop.id) {
         return;
     }
+
+    const requestId = ++nearestArrivalsRequestId;
+    statusContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...';
 
     try {
         const response = await fetch(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
@@ -703,6 +720,10 @@ async function fetchNearestStopArrivals(stop, route) {
         const arrivals = json.datos && Array.isArray(json.datos.buses)
             ? sortArrivalsByCountdown(json.datos.buses)
             : [];
+
+        if (requestId !== nearestArrivalsRequestId || nearestStopKey !== stopKey) {
+            return;
+        }
 
         arrivalsContainer.innerHTML = arrivals.length > 0
             ? `
@@ -723,9 +744,13 @@ async function fetchNearestStopArrivals(stop, route) {
                 </div>
             `
             : '<div class="text-xs text-gray-400">No hay buses próximos reportados.</div>';
+        statusContainer.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Llegadas actualizadas';
     } catch (err) {
         console.warn(`Error al consultar llegadas de la parada ${stop.id}:`, err);
-        arrivalsContainer.innerHTML = '<div class="text-xs text-red-300">No se pudieron consultar las llegadas.</div>';
+        if (requestId !== nearestArrivalsRequestId || nearestStopKey !== stopKey) {
+            return;
+        }
+        statusContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>No se pudo actualizar';
     }
 }
 
