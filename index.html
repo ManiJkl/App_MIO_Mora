@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIO Cali - Tracker de Rutas Preferidas</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-shell text-gray-100 h-full font-sans antialiased flex flex-col overflow-hidden">
+
+    <!-- Top Navigation Bar -->
+    <header class="app-header sticky top-0 z-30 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="brand-mark">
+                    <i class="fa-solid fa-bus-simple"></i>
+                </div>
+                <div>
+                    <h1 class="brand-title">
+                        MIO Tracker Cali
+                    </h1>
+                    <p class="brand-subtitle">Movilidad en tiempo real</p>
+                </div>
+            </div>
+
+            <!-- Header Status Badges & Controls -->
+            <div class="flex items-center gap-2">
+                <div id="statusBadge" class="status-badge">
+                    <span id="statusDot" class="status-dot bg-blue-400 animate-pulse"></span>
+                    <span id="statusText" class="hidden sm:inline">Conectando...</span>
+                </div>
+
+                <button onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" class="icon-button">
+                    <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout Container -->
+    <main class="app-main flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4 overflow-hidden relative">
+        
+        <!-- Sidebar Controls & Favorite Routes -->
+        <aside class="app-sidebar w-full lg:w-96 flex flex-col gap-4 flex-shrink-0 z-20">
+            
+            <!-- Quick Route Selector -->
+            <div class="surface-card route-selector flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="section-title">
+                        <i class="fa-solid fa-sliders text-blue-400"></i>
+                        Rutas activas
+                    </h2>
+                    <span id="selectedCount" class="count-pill">
+                        0 activas
+                    </span>
+                </div>
+
+                <!-- Grid of Custom Cards (T12, P40B, A11, A14A) -->
+                <div id="routesGrid" class="grid grid-cols-2 gap-2.5 pt-1">
+                    <!-- Cards dynamically rendered in app.js -->
+                </div>
+            </div>
+
+            <!-- Nearest Stop Information -->
+            <div class="surface-card nearest-card flex-1 flex flex-col min-h-[220px] lg:min-h-0 overflow-hidden">
+                <div class="card-heading">
+                    <h3 class="section-title">
+                        <i class="fa-solid fa-location-dot text-emerald-400"></i>
+                        Parada más cercana
+                    </h3>
+                    <span class="live-label"><span></span> EN VIVO</span>
+                </div>
+
+                <div id="nearestStopContainer" class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                    <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
+                        <i class="fa-solid fa-location-crosshairs text-2xl mb-2 text-emerald-400/70"></i>
+                        <p class="text-xs text-gray-300">Busca la parada más cercana</p>
+                        <p class="text-[10px] text-gray-500 mt-1">Usa el botón “Mi ubicación” para ver las próximas llegadas.</p>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Interactive Map Display -->
+        <section class="map-shell flex-1 flex flex-col overflow-hidden relative min-h-[350px] lg:min-h-0">
+            
+            <!-- Floating Map Controls -->
+            <div class="absolute top-3 left-3 right-3 z-[1000] flex justify-between items-center pointer-events-none">
+                <div class="map-status pointer-events-auto">
+                    <span class="status-dot bg-emerald-500 animate-ping"></span>
+                    <span>API: <code class="text-blue-400 font-mono">mio-backend-mora</code></span>
+                </div>
+
+                <div class="pointer-events-auto flex items-center gap-2">
+                    <label for="mapMode" class="sr-only">Modo del mapa</label>
+                    <div class="map-control">
+                        <i class="fa-solid fa-layer-group text-blue-400 text-xs" aria-hidden="true"></i>
+                        <select id="mapMode" onchange="changeMapMode(this.value)" title="Cambiar modo del mapa" class="map-mode-select bg-transparent text-xs font-bold text-gray-200 py-1.5 outline-none cursor-pointer">
+                            <!-- <option value="dark">Oscuro</option> NO SIRVE -->
+                            <option value="satellite" selected>Satélite</option>
+                            <option value="street" >Calles</option>
+                            <option value="terrain">Terreno</option>
+                        </select>
+                    </div>
+                    <button onclick="recenterMap()" title="Centrar mapa en Cali" class="map-button">
+                        <i class="fa-solid fa-crosshairs text-blue-400"></i>
+                        <span class="hidden sm:inline">Centrar</span>
+                    </button>
+                    <button id="locateMeButton" onclick="locateUser()" title="Activar seguimiento de ubicación" class="map-button map-button-accent">
+                        <i id="locateMeIcon" class="fa-solid fa-location-crosshairs text-emerald-400"></i>
+                        <span class="hidden sm:inline">Seguimiento</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leaflet Canvas -->
+            <div id="map" class="w-full h-full z-10 min-h-[350px]"></div>
+
+            <!-- Map Bottom Legend -->
+            <div class="map-legend px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-400 z-20">
+                <div class="flex items-center gap-3">
+                    <span class="text-gray-500">Buses:</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> T12</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> P40B</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> A11</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> A14A</span>
+                </div>
+                <div id="lastUpdated" class="italic text-gray-500">Esperando sincronización...</div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Main Application JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
