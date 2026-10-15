@@ -37,8 +37,8 @@ const FEATURED_ROUTES = [
         id: 'A14A',
         name: 'A14A Universidades - San Buenaventura',
         type: 'ALIMENTADOR',
-        color: '#a855f7', // Purple
-        bgBadge: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+        color: '#58c7d9', // Cyan
+        bgBadge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
         desc: 'Conexión Universidad San Buenaventura'
     }
 ];
@@ -444,7 +444,7 @@ async function fetchActiveRoutesData() {
     const refreshIcon = document.getElementById('refreshIcon');
 
     refreshIcon.classList.add('fa-spin');
-    statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+    statusDot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
     statusText.innerText = 'Consultando MIO...';
 
     if (selectedRoutes.length === 0) {
@@ -497,7 +497,7 @@ async function fetchActiveRoutesData() {
         statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
         statusText.innerText = 'Servidor Render Activo';
     } else {
-        statusDot.className = 'w-2 h-2 rounded-full bg-red-400';
+        statusDot.className = 'w-2 h-2 rounded-full bg-blue-400';
         statusText.innerText = 'Servidor en Reposo / Reintentando';
     }
 
@@ -646,11 +646,11 @@ function updateRouteStops() {
 
 function createStopPopupContent(stop, routeMeta, message = 'Haz clic en la parada para consultar llegadas.') {
     return `
-        <div class="p-1 min-w-[220px]">
-            <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
-            <div class="text-[10px] text-gray-400">Ruta: ${routeMeta.id}</div>
-            <div class="text-[10px] text-gray-400">ID: ${stop.id || 'No disponible'}</div>
-            <div class="text-[10px] text-gray-400 mb-2">Coordenadas: ${stop.lat}, ${stop.lng}</div>
+        <div class="stop-popup p-1 min-w-[220px]">
+            <div class="stop-popup-heading">
+                <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
+                <span class="stop-popup-route" style="background-color: ${routeMeta.color}">${routeMeta.id}</span>
+            </div>
             ${message}
         </div>
     `;
@@ -669,7 +669,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
     stopLayer.setPopupContent(createStopPopupContent(
         stop,
         routeMeta,
-        '<div class="text-xs text-blue-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>'
+        '<div class="text-xs text-amber-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>'
     ));
 
     try {
@@ -686,17 +686,10 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
 
         const arrivalsContent = arrivals.length > 0
             ? `
-                <div class="text-[10px] font-bold text-gray-300 mb-1">
-                    Próximas llegadas${json.datos.nombreParada ? ` · ${json.datos.nombreParada}` : ''}
-                </div>
-                <div class="space-y-1">
+                <div class="stop-arrivals-list">
                     ${sortArrivalsByCountdown(arrivals).map(arrival => `
-                        <div class="flex items-center justify-between gap-3 text-[10px]">
-                            <span class="text-gray-300">
-                                <strong>${arrival.nombreLinea || 'Línea no disponible'}</strong>
-                                · ${arrival.nombreDestino || 'Destino no disponible'}
-                                <br><span class="text-gray-500">Bus ${arrival.numeroDeBus || 'No disponible'}</span>
-                            </span>
+                        <div class="stop-arrival-row">
+                            <strong class="text-gray-300">${arrival.nombreLinea || routeMeta.id}</strong>
                             <span class="font-bold text-emerald-400 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
                         </div>
                     `).join('')}
@@ -773,18 +766,17 @@ function updateNearestStopPanel() {
     if (nearestStopKey !== stopKey) {
         nearestStopKey = stopKey;
         container.innerHTML = `
-            <div data-nearest-stop-key="${stopKey}" class="rounded-xl bg-gradient-to-br from-emerald-900/40 to-gray-700/40 border border-emerald-700/40 p-3">
+            <div data-nearest-stop-key="${stopKey}" class="rounded-xl border border-emerald-700/40 p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div>
-                        <div class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">Más cercana · <span id="nearestStopDistance">${formatDistance(distance)}</span></div>
+                                <div class="nearest-stop-meta">A ${formatDistance(distance)}</div>
                         <h4 class="text-sm font-extrabold text-gray-100 mt-1">${nearestStop.stop.nombre}</h4>
                     </div>
                     <span class="text-[10px] font-bold px-2 py-1 rounded-full text-white" style="background-color: ${nearestStop.route.color}">
                         ${nearestStop.route.id}
                     </span>
                 </div>
-                <div class="text-[10px] text-gray-400 mt-1">ID: ${nearestStop.stop.id || 'No disponible'}</div>
-                <div id="nearestArrivalsStatus" class="mt-3 text-xs text-blue-300" aria-live="polite">
+                <div id="nearestArrivalsStatus" class="mt-3 text-xs text-amber-300" aria-live="polite">
                     <i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...
                 </div>
                 <div id="nearestArrivals" class="mt-2">
@@ -860,17 +852,10 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
 
         arrivalsContainer.innerHTML = arrivals.length > 0
             ? `
-                <div class="text-[10px] font-bold text-gray-300 mb-1">
-                    Próximos buses${json.datos.nombreParada ? ` · ${json.datos.nombreParada}` : ''}
-                </div>
-                <div class="space-y-1.5">
+                <div class="stop-arrivals-list">
                     ${arrivals.map(arrival => `
-                        <div class="flex items-center justify-between gap-2 border-t border-gray-700/60 pt-1.5">
-                            <div class="min-w-0">
-                                <div class="text-xs font-bold text-gray-200">${arrival.nombreLinea || 'Línea no disponible'}</div>
-                                <div class="text-[10px] text-gray-400 truncate">${arrival.nombreDestino || 'Destino no disponible'}</div>
-                                <div class="text-[10px] text-gray-500">Bus ${arrival.numeroDeBus || 'No disponible'}</div>
-                            </div>
+                        <div class="stop-arrival-row">
+                            <div class="text-xs font-bold text-gray-200">${arrival.nombreLinea || route.id}</div>
                             <span class="text-xs font-black text-emerald-300 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
                         </div>
                     `).join('')}
@@ -976,15 +961,12 @@ function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
 
 function createBusPopupContent(routeMeta, busCode, bus) {
     return `
-            <div class="p-1">
-                <div class="flex items-center gap-2 border-b border-gray-700 pb-1 mb-1">
-                    <span class="font-extrabold text-sm text-gray-100">${routeMeta.id}</span>
-                    <span class="text-[10px] text-gray-400">Bus: ${busCode}</span>
+            <div class="bus-popup p-1">
+                <div class="bus-popup-heading">
+                    <span class="font-extrabold text-sm text-gray-100">Ruta ${routeMeta.id}</span>
+                    <span class="bus-popup-status">En movimiento</span>
                 </div>
-                <p class="text-xs text-gray-300 font-medium">Línea: ${bus.nombreLinea || routeMeta.name}</p>
-                <p class="text-[10px] text-gray-400">Recorrido: ${bus.origen || bus.paradaInicial || 'Origen no disponible'} &rarr; ${bus.destino || bus.paradaFinal || 'Destino no disponible'}</p>
-                <p class="text-[10px] text-gray-400">Coordenadas: ${bus.lat ?? bus.latitud ?? 'No disponible'}, ${bus.lng ?? bus.longitud ?? 'No disponible'}</p>
-                <p class="text-[10px] text-emerald-400 font-bold mt-1">● Reportando ubicación GPS</p>
+                <p class="text-xs text-gray-300 font-medium mt-2">Ubicación actualizada por GPS</p>
             </div>
         `;
 }
