@@ -58,6 +58,7 @@ let userLocationMarker = null;
 let userLocationAccuracy = null;
 let userCoordinates = null;
 let locationWatchId = null;
+let locationRequestInProgress = false;
 
 const MAP_MODES = {
     dark: {
@@ -117,7 +118,7 @@ function startLocationTracking() {
     const button = document.getElementById('locateMeButton');
     const icon = document.getElementById('locateMeIcon');
 
-    if (locationWatchId !== null) {
+    if (locationWatchId !== null || locationRequestInProgress) {
         return;
     }
 
@@ -126,71 +127,92 @@ function startLocationTracking() {
         return;
     }
 
+    if (!window.isSecureContext) {
+        status.innerText = 'El GPS requiere abrir la página con HTTPS en iPhone.';
+        return;
+    }
+
+    locationRequestInProgress = true;
     button.disabled = true;
     button.classList.add('opacity-60', 'cursor-wait');
     icon.classList.remove('fa-location-crosshairs');
     icon.classList.add('fa-spinner', 'fa-spin');
     status.innerText = 'Buscando tu ubicación...';
 
-    locationWatchId = navigator.geolocation.watchPosition(
+    const locationOptions = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+    };
+
+    navigator.geolocation.getCurrentPosition(
         position => {
-            const { latitude, longitude, accuracy } = position.coords;
-            const userLatLng = [latitude, longitude];
-            const shouldCenterMap = !userLocationMarker;
-            userCoordinates = { lat: latitude, lng: longitude };
-
-            if (userLocationMarker) {
-                map.removeLayer(userLocationMarker);
-            }
-            if (userLocationAccuracy) {
-                map.removeLayer(userLocationAccuracy);
-            }
-
-            userLocationAccuracy = L.circle(userLatLng, {
-                radius: accuracy,
-                color: '#34d399',
-                fillColor: '#34d399',
-                fillOpacity: 0.12,
-                weight: 1
-            }).addTo(map);
-
-            userLocationMarker = L.marker(userLatLng, {
-                icon: L.divIcon({
-                    className: 'user-location-marker',
-                    html: '<span class="user-location-dot"></span>',
-                    iconSize: [22, 22],
-                    iconAnchor: [11, 11]
-                }),
-                title: 'Mi ubicación'
-            })
-                .addTo(map)
-                .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
-
-            if (shouldCenterMap) {
-                map.flyTo(userLatLng, 16, { duration: 1 });
-            }
-            status.innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
-            updateNearestStopPanel();
-            resetLocateButton();
+            locationRequestInProgress = false;
+            updateUserLocation(position);
+            locationWatchId = navigator.geolocation.watchPosition(
+                updateUserLocation,
+                handleLocationError,
+                locationOptions
+            );
         },
-        error => {
-            const messages = {
-                1: 'Permiso de ubicación denegado.',
-                2: 'No se pudo determinar tu ubicación.',
-                3: 'La búsqueda de ubicación tardó demasiado.'
-            };
-            status.innerText = messages[error.code] || 'No se pudo obtener tu ubicación.';
-            if (error.code === 1) {
-                locationWatchId = null;
-            }
-            resetLocateButton();
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 30000
-        }
+        handleLocationError,
+        locationOptions
     );
+}
+
+function updateUserLocation(position) {
+    const { latitude, longitude, accuracy } = position.coords;
+    const userLatLng = [latitude, longitude];
+    const shouldCenterMap = !userLocationMarker;
+    userCoordinates = { lat: latitude, lng: longitude };
+
+    if (userLocationMarker) {
+        map.removeLayer(userLocationMarker);
+    }
+    if (userLocationAccuracy) {
+        map.removeLayer(userLocationAccuracy);
+    }
+
+    userLocationAccuracy = L.circle(userLatLng, {
+        radius: accuracy,
+        color: '#34d399',
+        fillColor: '#34d399',
+        fillOpacity: 0.12,
+        weight: 1
+    }).addTo(map);
+
+    userLocationMarker = L.marker(userLatLng, {
+        icon: L.divIcon({
+            className: 'user-location-marker',
+            html: '<span class="user-location-dot"></span>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+        }),
+        title: 'Mi ubicación'
+    })
+        .addTo(map)
+        .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
+
+    if (shouldCenterMap) {
+        map.flyTo(userLatLng, 16, { duration: 1 });
+    }
+
+    document.getElementById('lastUpdated').innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
+    updateNearestStopPanel();
+    resetLocateButton();
+}
+
+function handleLocationError(error) {
+    locationRequestInProgress = false;
+    locationWatchId = null;
+    const messages = {
+        1: 'Permiso denegado. Activa Ubicación para Safari en Ajustes.',
+        2: 'No se pudo determinar tu ubicación. Revisa el GPS del iPhone.',
+        3: 'La búsqueda tardó demasiado. Intenta nuevamente.'
+    };
+    document.getElementById('lastUpdated').innerText =
+        messages[error.code] || 'No se pudo obtener tu ubicación.';
+    resetLocateButton();
 }
 
 function resetLocateButton() {

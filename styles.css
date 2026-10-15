@@ -591,6 +591,24 @@ body.app-shell {
     }
 }
 
+@media (max-width: 1023px) {
+    html,
+    body.app-shell {
+        height: auto !important;
+        min-height: 100%;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.app-shell .app-main {
+        flex: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         color-scheme: dark;
