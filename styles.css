@@ -588,11 +588,22 @@ select:focus-visible {
 }
 
 @media (max-width: 1023px) {
+    html,
     body.app-shell {
-        overflow: auto;
+        height: auto !important;
+        min-height: 100%;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.app-shell {
+        display: block;
     }
 
     .app-main {
+        flex: none !important;
+        height: auto !important;
         min-height: auto;
         overflow: visible;
     }
@@ -640,7 +651,7 @@ select:focus-visible {
 
     .nearest-card {
         grid-column: 1;
-        grid-row: 3;
+        grid-row: 1;
         height: 270px !important;
         min-height: 270px !important;
         max-height: 270px !important;
@@ -656,7 +667,7 @@ select:focus-visible {
 
     .route-selector {
         grid-column: 1;
-        grid-row: 1;
+        grid-row: 3;
         max-height: none;
         padding: 16px;
     }
