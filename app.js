@@ -56,6 +56,8 @@ let autoRefreshTimer = null;
 let currentMapMode = 'satellite'; // Default map mode
 let userLocationMarker = null;
 let userLocationAccuracy = null;
+let userCoordinates = null;
+let locationWatchId = null;
 
 const MAP_MODES = {
     dark: {
@@ -84,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     renderRouteCards();
     fetchActiveRoutesData();
+    startLocationTracking();
 
     // Refresh every 12 seconds
     autoRefreshTimer = setInterval(fetchActiveRoutesData, 12000);
@@ -106,9 +109,17 @@ function recenterMap() {
 }
 
 function locateUser() {
+    startLocationTracking();
+}
+
+function startLocationTracking() {
     const status = document.getElementById('lastUpdated');
     const button = document.getElementById('locateMeButton');
     const icon = document.getElementById('locateMeIcon');
+
+    if (locationWatchId !== null) {
+        return;
+    }
 
     if (!navigator.geolocation) {
         status.innerText = 'Este navegador no permite obtener la ubicación.';
@@ -121,10 +132,12 @@ function locateUser() {
     icon.classList.add('fa-spinner', 'fa-spin');
     status.innerText = 'Buscando tu ubicación...';
 
-    navigator.geolocation.getCurrentPosition(
+    locationWatchId = navigator.geolocation.watchPosition(
         position => {
             const { latitude, longitude, accuracy } = position.coords;
             const userLatLng = [latitude, longitude];
+            const shouldCenterMap = !userLocationMarker;
+            userCoordinates = { lat: latitude, lng: longitude };
 
             if (userLocationMarker) {
                 map.removeLayer(userLocationMarker);
@@ -153,8 +166,11 @@ function locateUser() {
                 .addTo(map)
                 .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
 
-            map.flyTo(userLatLng, 16, { duration: 1 });
+            if (shouldCenterMap) {
+                map.flyTo(userLatLng, 16, { duration: 1 });
+            }
             status.innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
+            updateNearestStopPanel();
             resetLocateButton();
         },
         error => {
@@ -164,6 +180,9 @@ function locateUser() {
                 3: 'La búsqueda de ubicación tardó demasiado.'
             };
             status.innerText = messages[error.code] || 'No se pudo obtener tu ubicación.';
+            if (error.code === 1) {
+                locationWatchId = null;
+            }
             resetLocateButton();
         },
         {
@@ -260,6 +279,7 @@ function toggleRouteSelection(routeId) {
     renderRouteCards();
     updateRoutePaths();
     updateRouteStops();
+    updateNearestStopPanel();
     if (selectedRoutes.includes(routeId)) {
         if (!routePointsByRoute[routeId]) {
             fetchRoutePath(routeId);
@@ -268,7 +288,8 @@ function toggleRouteSelection(routeId) {
             fetchRouteStops(routeId);
         }
     }
-    updateMapAndList();
+    updateBusMarkers();
+    updateNearestStopPanel();
 }
 
 /* ==========================================================================
@@ -329,7 +350,8 @@ async function fetchActiveRoutesData() {
     document.getElementById('lastUpdated').innerText = `Actualizado: ${new Date().toLocaleTimeString('es-CO')}`;
 
     renderRouteCards();
-    updateMapAndList();
+    updateBusMarkers();
+    updateNearestStopPanel();
 }
 
 async function fetchRoutePath(routeId) {
@@ -428,6 +450,7 @@ async function fetchRouteStops(routeId) {
 
         stopDataByRoute[routeId] = validStops;
         updateRouteStops();
+        updateNearestStopPanel();
     } catch (err) {
         console.warn(`Error al consultar paradas de ruta ${routeId}:`, err);
     }
@@ -561,15 +584,152 @@ function parseCountdownMinutes(countdown) {
     return minutesMatch ? Number(minutesMatch[1]) : Number.POSITIVE_INFINITY;
 }
 
+function updateNearestStopPanel() {
+    const container = document.getElementById('nearestStopContainer');
+    if (!container) {
+        return;
+    }
+
+    if (!userCoordinates) {
+        return;
+    }
+
+    const nearestStop = findNearestStop();
+    if (!nearestStop) {
+        container.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
+                <i class="fa-solid fa-road-barrier text-2xl mb-2 text-amber-400/70"></i>
+                <p class="text-xs text-gray-300">No hay paradas disponibles</p>
+                <p class="text-[10px] text-gray-500 mt-1">Selecciona al menos una ruta para consultar sus paradas.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const distance = getDistanceInMeters(
+        userCoordinates.lat,
+        userCoordinates.lng,
+        nearestStop.stop.lat,
+        nearestStop.stop.lng
+    );
+
+    container.innerHTML = `
+        <div class="rounded-xl bg-gradient-to-br from-emerald-900/40 to-gray-700/40 border border-emerald-700/40 p-3">
+            <div class="flex items-start justify-between gap-2">
+                <div>
+                    <div class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">Más cercana · ${formatDistance(distance)}</div>
+                    <h4 class="text-sm font-extrabold text-gray-100 mt-1">${nearestStop.stop.nombre}</h4>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-1 rounded-full text-white" style="background-color: ${nearestStop.route.color}">
+                    ${nearestStop.route.id}
+                </span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">ID: ${nearestStop.stop.id || 'No disponible'}</div>
+            <div id="nearestArrivals" class="mt-3">
+                <div class="text-xs text-blue-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>
+            </div>
+        </div>
+    `;
+
+    fetchNearestStopArrivals(nearestStop.stop, nearestStop.route);
+}
+
+function findNearestStop() {
+    if (!userCoordinates) {
+        return null;
+    }
+
+    let nearestStop = null;
+    selectedRoutes.forEach(routeId => {
+        const route = TARGET_ROUTES.find(item => item.id === routeId);
+        const stops = stopDataByRoute[routeId] || [];
+
+        if (!route) {
+            return;
+        }
+
+        stops.forEach(stop => {
+            const distance = getDistanceInMeters(
+                userCoordinates.lat,
+                userCoordinates.lng,
+                stop.lat,
+                stop.lng
+            );
+
+            if (!nearestStop || distance < nearestStop.distance) {
+                nearestStop = { stop, route, distance };
+            }
+        });
+    });
+
+    return nearestStop;
+}
+
+async function fetchNearestStopArrivals(stop, route) {
+    const arrivalsContainer = document.getElementById('nearestArrivals');
+    if (!arrivalsContainer || !stop.id) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        const arrivals = json.datos && Array.isArray(json.datos.buses)
+            ? sortArrivalsByCountdown(json.datos.buses)
+            : [];
+
+        arrivalsContainer.innerHTML = arrivals.length > 0
+            ? `
+                <div class="text-[10px] font-bold text-gray-300 mb-1">
+                    Próximos buses${json.datos.nombreParada ? ` · ${json.datos.nombreParada}` : ''}
+                </div>
+                <div class="space-y-1.5">
+                    ${arrivals.map(arrival => `
+                        <div class="flex items-center justify-between gap-2 border-t border-gray-700/60 pt-1.5">
+                            <div class="min-w-0">
+                                <div class="text-xs font-bold text-gray-200">${arrival.nombreLinea || 'Línea no disponible'}</div>
+                                <div class="text-[10px] text-gray-400 truncate">${arrival.nombreDestino || 'Destino no disponible'}</div>
+                                <div class="text-[10px] text-gray-500">Bus ${arrival.numeroDeBus || 'No disponible'}</div>
+                            </div>
+                            <span class="text-xs font-black text-emerald-300 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `
+            : '<div class="text-xs text-gray-400">No hay buses próximos reportados.</div>';
+    } catch (err) {
+        console.warn(`Error al consultar llegadas de la parada ${stop.id}:`, err);
+        arrivalsContainer.innerHTML = '<div class="text-xs text-red-300">No se pudieron consultar las llegadas.</div>';
+    }
+}
+
+function getDistanceInMeters(firstLat, firstLng, secondLat, secondLng) {
+    const earthRadius = 6371000;
+    const latDifference = (secondLat - firstLat) * Math.PI / 180;
+    const lngDifference = (secondLng - firstLng) * Math.PI / 180;
+    const firstLatitude = firstLat * Math.PI / 180;
+    const secondLatitude = secondLat * Math.PI / 180;
+    const haversine = Math.sin(latDifference / 2) ** 2
+        + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(lngDifference / 2) ** 2;
+
+    return 2 * earthRadius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function formatDistance(distance) {
+    return distance < 1000
+        ? `${Math.round(distance)} m`
+        : `${(distance / 1000).toFixed(1)} km`;
+}
+
 /* ==========================================================================
    MAP MARKERS & BUS LIST RENDERING
    ========================================================================== */
 
-function updateMapAndList() {
-    const busesContainer = document.getElementById('busesListContainer');
-    busesContainer.innerHTML = '';
-
-    let totalActiveBuses = 0;
+function updateBusMarkers() {
     const currentBusCodes = new Set();
 
     selectedRoutes.forEach(routeId => {
@@ -577,8 +737,6 @@ function updateMapAndList() {
         const buses = busDataByRoute[routeId] || [];
 
         buses.forEach((bus, index) => {
-            totalActiveBuses++;
-            
             // Extract coordinates & properties flexible to SIUR variations
             const lat = parseFloat(bus.latitud || bus.lat || bus.latitude);
             const lng = parseFloat(bus.longitud || bus.lng || bus.longitude);
@@ -591,36 +749,6 @@ function updateMapAndList() {
                 // Update or create Leaflet map marker
                 renderBusMarker(busKey, lat, lng, routeMeta, busCode, bus);
             }
-
-            // Append card to active list sidebar
-            const busCard = document.createElement('div');
-            busCard.className = 'p-2.5 rounded-xl bg-gray-700/40 border border-gray-700/60 hover:bg-gray-700/80 transition-all cursor-pointer flex items-center justify-between gap-2';
-            busCard.onclick = () => {
-                if (mapMarkers[busKey]) {
-                    map.flyTo([lat, lng], 15, { duration: 1 });
-                    mapMarkers[busKey].openPopup();
-                }
-            };
-
-            busCard.innerHTML = `
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md" style="background-color: ${routeMeta.color}">
-                        ${routeId}
-                    </div>
-                    <div>
-                        <div class="font-bold text-xs text-gray-200">Bus ${busCode}</div>
-                        <div class="text-[10px] text-gray-400">${bus.nombreLinea || routeMeta.name}</div>
-                        <div class="text-[10px] text-gray-400">${bus.origen || bus.paradaInicial || 'Origen no disponible'} &rarr; ${bus.destino || bus.paradaFinal || 'Destino no disponible'}</div>
-                        <div class="text-[10px] text-gray-500">GPS: ${bus.lat ?? bus.latitud ?? lat}, ${bus.lng ?? bus.longitud ?? lng}</div>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span class="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
-                        En vivo
-                    </span>
-                </div>
-            `;
-            busesContainer.appendChild(busCard);
         });
     });
 
@@ -631,18 +759,6 @@ function updateMapAndList() {
             delete mapMarkers[key];
         }
     });
-
-    document.getElementById('totalBusesCount').innerText = `${totalActiveBuses} buses`;
-
-    if (totalActiveBuses === 0) {
-        busesContainer.innerHTML = `
-            <div class="h-full flex flex-col items-center justify-center p-6 text-center text-gray-500">
-                <i class="fa-solid fa-bus text-2xl mb-2 opacity-40"></i>
-                <p class="text-xs">No hay buses detectados en las rutas seleccionadas.</p>
-                <p class="text-[10px] text-gray-600 mt-1">Si el servidor estuvo apagado, volverá en un momento.</p>
-            </div>
-        `;
-    }
 }
 
 function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
