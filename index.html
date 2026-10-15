@@ -116,10 +116,26 @@
                     <span>API: <code class="text-blue-400 font-mono">mio-backend-mora</code></span>
                 </div>
 
-                <button onclick="recenterMap()" title="Centrar mapa en Cali" class="pointer-events-auto bg-gray-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-bold text-gray-200 hover:bg-gray-800 transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-crosshairs text-blue-400"></i>
-                    <span>Centrar</span>
-                </button>
+                <div class="pointer-events-auto flex items-center gap-2">
+                    <label for="mapMode" class="sr-only">Modo del mapa</label>
+                    <div class="bg-gray-900/90 backdrop-blur-md rounded-xl border border-gray-700/80 shadow-lg flex items-center gap-2 px-2.5">
+                        <i class="fa-solid fa-layer-group text-blue-400 text-xs" aria-hidden="true"></i>
+                        <select id="mapMode" onchange="changeMapMode(this.value)" title="Cambiar modo del mapa" class="map-mode-select bg-transparent text-xs font-bold text-gray-200 py-1.5 outline-none cursor-pointer">
+                            <!-- <option value="dark">Oscuro</option> NO SIRVE -->
+                            <option value="satellite" selected>Satélite</option>
+                            <option value="street" >Calles</option>
+                            <option value="terrain">Terreno</option>
+                        </select>
+                    </div>
+                    <button onclick="recenterMap()" title="Centrar mapa en Cali" class="bg-gray-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-bold text-gray-200 hover:bg-gray-800 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-crosshairs text-blue-400"></i>
+                        <span class="hidden sm:inline">Centrar</span>
+                    </button>
+                    <button id="locateMeButton" onclick="locateUser()" title="Buscar mi ubicación" class="bg-gray-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-gray-700/80 shadow-lg text-xs font-bold text-gray-200 hover:bg-gray-800 transition-all flex items-center gap-2">
+                        <i id="locateMeIcon" class="fa-solid fa-location-crosshairs text-emerald-400"></i>
+                        <span class="hidden sm:inline">Mi ubicación</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Leaflet Canvas -->
@@ -128,6 +144,7 @@
             <!-- Map Bottom Legend -->
             <div class="bg-gray-900/90 border-t border-gray-700/60 px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-400 z-20">
                 <div class="flex items-center gap-3">
+                    <span class="text-gray-500">Buses:</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> T12</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> P40B</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> A11</span>
@@ -141,7 +158,7 @@
     </main>
 
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0q肢+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Main Application JavaScript -->
     <script src="app.js"></script>
 </body>

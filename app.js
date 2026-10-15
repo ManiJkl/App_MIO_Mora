@@ -46,6 +46,28 @@ let mapMarkers = {};
 let map = null;
 let tileLayer = null;
 let autoRefreshTimer = null;
+let currentMapMode = 'satellite'; // Default map mode
+let userLocationMarker = null;
+let userLocationAccuracy = null;
+
+const MAP_MODES = {
+    dark: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    },
+    street: {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors'
+    },
+    satellite: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles &copy; Esri'
+    },
+    terrain: {
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap'
+    }
+};
 
 /* ==========================================================================
    LIFECYCLE INITIALIZATION
@@ -69,15 +91,111 @@ function initMap() {
     map = L.map('map', { zoomControl: false }).setView([3.4250, -76.5350], 12);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
-
-    tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
+    changeMapMode(currentMapMode);
 }
 
 function recenterMap() {
     map.flyTo([3.4250, -76.5350], 12.5, { duration: 1 });
+}
+
+function locateUser() {
+    const status = document.getElementById('lastUpdated');
+    const button = document.getElementById('locateMeButton');
+    const icon = document.getElementById('locateMeIcon');
+
+    if (!navigator.geolocation) {
+        status.innerText = 'Este navegador no permite obtener la ubicación.';
+        return;
+    }
+
+    button.disabled = true;
+    button.classList.add('opacity-60', 'cursor-wait');
+    icon.classList.remove('fa-location-crosshairs');
+    icon.classList.add('fa-spinner', 'fa-spin');
+    status.innerText = 'Buscando tu ubicación...';
+
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const { latitude, longitude, accuracy } = position.coords;
+            const userLatLng = [latitude, longitude];
+
+            if (userLocationMarker) {
+                map.removeLayer(userLocationMarker);
+            }
+            if (userLocationAccuracy) {
+                map.removeLayer(userLocationAccuracy);
+            }
+
+            userLocationAccuracy = L.circle(userLatLng, {
+                radius: accuracy,
+                color: '#34d399',
+                fillColor: '#34d399',
+                fillOpacity: 0.12,
+                weight: 1
+            }).addTo(map);
+
+            userLocationMarker = L.marker(userLatLng, {
+                icon: L.divIcon({
+                    className: 'user-location-marker',
+                    html: '<span class="user-location-dot"></span>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                }),
+                title: 'Mi ubicación'
+            })
+                .addTo(map)
+                .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
+
+            map.flyTo(userLatLng, 16, { duration: 1 });
+            status.innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
+            resetLocateButton();
+        },
+        error => {
+            const messages = {
+                1: 'Permiso de ubicación denegado.',
+                2: 'No se pudo determinar tu ubicación.',
+                3: 'La búsqueda de ubicación tardó demasiado.'
+            };
+            status.innerText = messages[error.code] || 'No se pudo obtener tu ubicación.';
+            resetLocateButton();
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000
+        }
+    );
+}
+
+function resetLocateButton() {
+    const button = document.getElementById('locateMeButton');
+    const icon = document.getElementById('locateMeIcon');
+
+    button.disabled = false;
+    button.classList.remove('opacity-60', 'cursor-wait');
+    icon.classList.remove('fa-spinner', 'fa-spin');
+    icon.classList.add('fa-location-crosshairs');
+}
+
+function changeMapMode(mode) {
+    if (!MAP_MODES[mode] || !map) {
+        return;
+    }
+
+    if (tileLayer) {
+        map.removeLayer(tileLayer);
+    }
+
+    const selectedMode = MAP_MODES[mode];
+    tileLayer = L.tileLayer(selectedMode.url, {
+        maxZoom: mode === 'satellite' ? 18 : 19,
+        attribution: selectedMode.attribution
+    }).addTo(map);
+    currentMapMode = mode;
+    const mapModeSelect = document.getElementById('mapMode');
+    if (mapModeSelect) {
+        mapModeSelect.value = mode;
+    }
 }
 
 /* ==========================================================================
