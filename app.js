@@ -6,8 +6,9 @@ const RENDER_API_BASE = 'https://mio-backend-mora.onrender.com/api/buses';
 const RENDER_ROUTE_BASE = 'https://mio-backend-mora.onrender.com/api/recorrido';
 const RENDER_STOPS_BASE = 'https://mio-backend-mora.onrender.com/api/paradas';
 const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas';
+const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 
-const TARGET_ROUTES = [
+const FEATURED_ROUTES = [
     {
         id: 'T12',
         name: 'T12 Andrés Sanín - Centro - Cll 5ta',
@@ -42,8 +43,55 @@ const TARGET_ROUTES = [
     }
 ];
 
+const ALL_ROUTE_CODES = [
+    'T12', 'T15', 'T31', 'T47', 'T51', 'T52', 'T57', 'T62',
+    'E21', 'E27', 'E37', 'E51',
+    'P10A', 'P10B', 'P12A', 'P14A', 'P20A', 'P21A', 'P27D', 'P30A',
+    'P40A', 'P40B', 'P47', 'P51A', 'P51C', 'P52', 'P60A', 'P60B',
+    'P62A', 'P62D', 'P74', 'P82',
+    'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A11', 'A12A', 'A12B',
+    'A13A', 'A13B', 'A14A', 'A14B', 'A15', 'A17', 'A18', 'A19',
+    'A21', 'A24', 'A25', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36',
+    'A37', 'A41', 'A41A', 'A42', 'A43', 'A44', 'A45', 'A46', 'A47',
+    'A51', 'A52', 'A53', 'A54', 'A55', 'A56', 'A57', 'A61', 'A62',
+    'A63', 'A64', 'A71', 'A72', 'A72A', 'A73', 'A74', 'A75', 'A76',
+    'A77', 'A78A', 'A81', 'A82', 'A83',
+    'AL2A', 'AL2B', 'AL2C', 'AL2D', 'AL3A', 'AL3C', 'AL4A', 'AL4B',
+    'AL7B', 'AL7D', 'AL7F', 'AL8', 'AL9A', 'AL9B'
+];
+
+const ROUTE_COLORS = ['#ef4444', '#f59e0b', '#10b981', '#a855f7', '#2878f0', '#ec4899'];
+const ROUTE_TYPE_LABELS = {
+    T: 'TRONCAL',
+    E: 'EXPRESA',
+    P: 'PRETRONCAL',
+    A: 'ALIMENTADOR',
+    AL: 'ALIMENTADOR'
+};
+
+const TARGET_ROUTES = ALL_ROUTE_CODES.map((routeId, index) => {
+    const featuredRoute = FEATURED_ROUTES.find(route => route.id === routeId);
+    if (featuredRoute) {
+        return featuredRoute;
+    }
+
+    const routeType = routeId.startsWith('AL')
+        ? ROUTE_TYPE_LABELS.AL
+        : ROUTE_TYPE_LABELS[routeId[0]] || 'RUTA';
+    const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+    return {
+        id: routeId,
+        name: `${routeId} · Ruta MIO`,
+        type: routeType,
+        color,
+        bgBadge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+        desc: `Servicio ${routeType.toLowerCase()}`
+    };
+});
+
 // App State
-let selectedRoutes = ['T12', 'P40B', 'A11', 'A14A']; // All enabled by default
+let selectedRoutes = loadSelectedRoutes();
+let routeSearchTerm = '';
 let busDataByRoute = {};
 let mapMarkers = {};
 let routePointsByRoute = {};
@@ -53,12 +101,14 @@ let stopLayersByRoute = {};
 let map = null;
 let tileLayer = null;
 let autoRefreshTimer = null;
+let routeFetchDebounceTimer = null;
 let currentMapMode = 'satellite'; // Default map mode
 let userLocationMarker = null;
 let userLocationAccuracy = null;
 let userCoordinates = null;
 let locationWatchId = null;
 let locationRequestInProgress = false;
+let followUserLocation = false;
 let nearestStopKey = null;
 let nearestArrivalsRequestId = 0;
 
@@ -87,6 +137,10 @@ const MAP_MODES = {
 
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
+    document.getElementById('routeSearch').addEventListener('input', event => {
+        routeSearchTerm = event.target.value.trim().toLowerCase();
+        renderRouteCards();
+    });
     renderRouteCards();
     fetchActiveRoutesData();
     startLocationTracking();
@@ -104,6 +158,10 @@ function initMap() {
     map = L.map('map', { zoomControl: false }).setView([3.4250, -76.5350], 12);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
+    map.on('dragstart', () => {
+        followUserLocation = false;
+        updateLocateButtonState();
+    });
     changeMapMode(currentMapMode);
 }
 
@@ -112,7 +170,13 @@ function recenterMap() {
 }
 
 function locateUser() {
+    followUserLocation = true;
+    updateLocateButtonState();
     startLocationTracking();
+
+    if (userCoordinates) {
+        map.flyTo([userCoordinates.lat, userCoordinates.lng], 16, { duration: 1 });
+    }
 }
 
 function startLocationTracking() {
@@ -165,6 +229,7 @@ function startLocationTracking() {
 function updateUserLocation(position) {
     const { latitude, longitude, accuracy } = position.coords;
     const userLatLng = [latitude, longitude];
+    const shouldCenterMap = !userLocationMarker || followUserLocation;
     userCoordinates = { lat: latitude, lng: longitude };
 
     if (userLocationMarker) {
@@ -194,7 +259,9 @@ function updateUserLocation(position) {
         .addTo(map)
         .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
 
-    map.flyTo(userLatLng, 16, { duration: 1 });
+    if (shouldCenterMap) {
+        map.flyTo(userLatLng, 16, { duration: 1 });
+    }
 
     document.getElementById('lastUpdated').innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
     updateNearestStopPanel();
@@ -204,6 +271,7 @@ function updateUserLocation(position) {
 function handleLocationError(error) {
     locationRequestInProgress = false;
     locationWatchId = null;
+    followUserLocation = false;
     const messages = {
         1: 'Permiso denegado. Activa Ubicación para Safari en Ajustes.',
         2: 'No se pudo determinar tu ubicación. Revisa el GPS del iPhone.',
@@ -215,11 +283,23 @@ function handleLocationError(error) {
 }
 
 function resetLocateButton() {
+    updateLocateButtonState();
+}
+
+function updateLocateButtonState() {
     const button = document.getElementById('locateMeButton');
     const icon = document.getElementById('locateMeIcon');
 
-    button.disabled = false;
-    button.classList.remove('opacity-60', 'cursor-wait');
+    if (locationRequestInProgress) {
+        button.disabled = true;
+        button.classList.add('opacity-60', 'cursor-wait');
+    } else {
+        button.disabled = false;
+        button.classList.remove('opacity-60', 'cursor-wait');
+    }
+
+    button.classList.toggle('is-following', followUserLocation);
+    button.setAttribute('aria-pressed', String(followUserLocation));
     icon.classList.remove('fa-spinner', 'fa-spin');
     icon.classList.add('fa-location-crosshairs');
 }
@@ -253,7 +333,16 @@ function renderRouteCards() {
     const container = document.getElementById('routesGrid');
     container.innerHTML = '';
 
-    TARGET_ROUTES.forEach(route => {
+    const visibleRoutes = TARGET_ROUTES.filter(route => {
+        if (!routeSearchTerm) {
+            return true;
+        }
+        return `${route.id} ${route.name} ${route.type} ${route.desc}`
+            .toLowerCase()
+            .includes(routeSearchTerm);
+    });
+
+    visibleRoutes.forEach(route => {
         const isSelected = selectedRoutes.includes(route.id);
         const activeCount = (busDataByRoute[route.id] || []).length;
 
@@ -289,6 +378,12 @@ function renderRouteCards() {
     });
 
     document.getElementById('selectedCount').innerText = `${selectedRoutes.length} activas`;
+    document.getElementById('routesResultCount').innerText =
+        `${visibleRoutes.length} de ${TARGET_ROUTES.length} rutas`;
+
+    if (visibleRoutes.length === 0) {
+        container.innerHTML = '<div class="route-empty-state">No se encontraron rutas con esa búsqueda.</div>';
+    }
 }
 
 function toggleRouteSelection(routeId) {
@@ -297,6 +392,7 @@ function toggleRouteSelection(routeId) {
     } else {
         selectedRoutes.push(routeId);
     }
+    saveSelectedRoutes();
     renderRouteCards();
     updateRoutePaths();
     updateRouteStops();
@@ -311,6 +407,31 @@ function toggleRouteSelection(routeId) {
     }
     updateBusMarkers();
     updateNearestStopPanel();
+    clearTimeout(routeFetchDebounceTimer);
+    routeFetchDebounceTimer = setTimeout(fetchActiveRoutesData, 250);
+}
+
+function loadSelectedRoutes() {
+    try {
+        const savedRoutes = JSON.parse(localStorage.getItem(SELECTED_ROUTES_STORAGE_KEY));
+        if (!Array.isArray(savedRoutes)) {
+            return [];
+        }
+        return [...new Set(savedRoutes)].filter(routeId =>
+            ALL_ROUTE_CODES.includes(routeId)
+        );
+    } catch (error) {
+        console.warn('No se pudo cargar la configuración de rutas guardada:', error);
+        return [];
+    }
+}
+
+function saveSelectedRoutes() {
+    try {
+        localStorage.setItem(SELECTED_ROUTES_STORAGE_KEY, JSON.stringify(selectedRoutes));
+    } catch (error) {
+        console.warn('No se pudo guardar la configuración de rutas:', error);
+    }
 }
 
 /* ==========================================================================
@@ -325,6 +446,18 @@ async function fetchActiveRoutesData() {
     refreshIcon.classList.add('fa-spin');
     statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
     statusText.innerText = 'Consultando MIO...';
+
+    if (selectedRoutes.length === 0) {
+        refreshIcon.classList.remove('fa-spin');
+        statusDot.className = 'w-2 h-2 rounded-full bg-gray-400';
+        statusText.innerText = 'Selecciona una ruta';
+        document.getElementById('lastUpdated').innerText = 'Sin rutas seleccionadas';
+        updateBusMarkers();
+        updateRoutePaths();
+        updateRouteStops();
+        updateNearestStopPanel();
+        return;
+    }
 
     let hasSuccess = false;
 

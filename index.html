@@ -83,9 +83,17 @@
                     </span>
                 </div>
 
-                <!-- Grid of Custom Cards (T12, P40B, A11, A14A) -->
+                <label class="route-search">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input id="routeSearch" type="search" placeholder="Buscar ruta, código o tipo" autocomplete="off">
+                </label>
+                <div class="route-results-summary">
+                    <span id="routesResultCount">0 de 0 rutas</span>
+                    <span>Selecciona las que quieras monitorear</span>
+                </div>
+
                 <div id="routesGrid" class="grid grid-cols-2 gap-2.5 pt-1">
-                    <!-- Cards dynamically rendered in app.js -->
+                    <!-- Tarjetas generadas dinámicamente en app.js -->
                 </div>
             </div>
 

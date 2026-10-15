@@ -130,6 +130,7 @@ body.app-shell {
 
 .route-selector {
     flex: 0 0 auto;
+    max-height: min(62vh, 720px);
 }
 
 .nearest-card {
@@ -194,6 +195,60 @@ body.app-shell {
 
 #routesGrid {
     gap: 10px !important;
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 3px;
+}
+
+#routesGrid .route-empty-state {
+    grid-column: 1 / -1;
+    padding: 24px 12px;
+    color: #8794a6;
+    font-size: 11px;
+    text-align: center;
+}
+
+.route-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border: 1px solid #e1e8f1;
+    border-radius: 13px;
+    color: #8a97a8;
+    background: #f8fafd;
+}
+
+.route-search:focus-within {
+    border-color: #9fc4f7;
+    box-shadow: 0 0 0 3px rgba(40, 120, 240, 0.09);
+}
+
+.route-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    color: #344256;
+    background: transparent;
+    font-size: 11px;
+}
+
+.route-search input::placeholder {
+    color: #9aa6b5;
+}
+
+.route-results-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: #98a3b2;
+    font-size: 9px;
+}
+
+.route-results-summary span:first-child {
+    color: #5d7fb1;
+    font-weight: 700;
 }
 
 #routesGrid > div {
@@ -323,6 +378,19 @@ body.app-shell {
 .map-button-accent {
     color: #138d5c;
     border-color: #a7e2c7;
+}
+
+.map-button-accent.is-following {
+    color: #fff;
+    border-color: #138d5c;
+    background: #16a572;
+    box-shadow: 0 8px 22px rgba(22, 165, 114, 0.28);
+}
+
+.map-button-accent.is-following:hover {
+    color: #fff;
+    border-color: #0e875c;
+    background: #138d5c;
 }
 
 .map-legend {
