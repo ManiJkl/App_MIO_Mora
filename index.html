@@ -61,6 +61,43 @@
                 <button onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" class="icon-button">
                     <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm"></i>
                 </button>
+
+                <div class="settings-menu">
+                    <button id="settingsButton" type="button" class="icon-button" aria-expanded="false" aria-controls="settingsPanel" title="Configuración">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                    </button>
+                    <div id="settingsPanel" class="settings-panel" hidden>
+                        <div class="settings-heading">
+                            <strong>Configuración</strong>
+                            <button id="closeSettingsButton" type="button" class="settings-close" aria-label="Cerrar configuración">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <fieldset class="settings-field">
+                            <legend>Color de interfaz</legend>
+                            <div id="themeOptions" class="theme-options">
+                                <button type="button" class="theme-option" data-theme-option="blue"><span class="theme-swatch swatch-blue"></span>Azul</button>
+                                <button type="button" class="theme-option" data-theme-option="amber"><span class="theme-swatch swatch-amber"></span>Ámbar</button>
+                                <button type="button" class="theme-option" data-theme-option="teal"><span class="theme-swatch swatch-teal"></span>Turquesa</button>
+                                <button type="button" class="theme-option" data-theme-option="violet"><span class="theme-swatch swatch-violet"></span>Violeta</button>
+                                <button type="button" class="theme-option" data-theme-option="rose"><span class="theme-swatch swatch-rose"></span>Rosa</button>
+                                <button type="button" class="theme-option" data-theme-option="lime"><span class="theme-swatch swatch-lime"></span>Lima</button>
+                                <button type="button" class="theme-option" data-theme-option="indigo"><span class="theme-swatch swatch-indigo"></span>Índigo</button>
+                                <button type="button" class="theme-option" data-theme-option="red"><span class="theme-swatch swatch-red"></span>Rojo</button>
+                                <button type="button" class="theme-option" data-theme-option="yellow"><span class="theme-swatch swatch-yellow"></span>Amarillo</button>
+                                <button type="button" class="theme-option" data-theme-option="green"><span class="theme-swatch swatch-green"></span>Verde</button>
+                            </div>
+                        </fieldset>
+                        <label class="settings-field">
+                            <span>Apariencia</span>
+                            <select id="appearanceSelect">
+                                <option value="dark">Oscuro</option>
+                                <option value="light">Claro</option>
+                                <option value="auto">Automático</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </header>

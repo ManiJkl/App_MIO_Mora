@@ -7,6 +7,8 @@ const RENDER_ROUTE_BASE = 'https://mio-backend-mora.onrender.com/api/recorrido';
 const RENDER_STOPS_BASE = 'https://mio-backend-mora.onrender.com/api/paradas';
 const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas';
 const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
+const THEME_STORAGE_KEY = 'mio-tracker-theme';
+const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
 
 const FEATURED_ROUTES = [
     {
@@ -136,11 +138,96 @@ const MAP_MODES = {
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+    initSettings();
     initMap();
     document.getElementById('routeSearch').addEventListener('input', event => {
         routeSearchTerm = event.target.value.trim().toLowerCase();
         renderRouteCards();
     });
+
+    function initSettings() {
+        const settingsButton = document.getElementById('settingsButton');
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const themeOptions = document.getElementById('themeOptions');
+        const appearanceSelect = document.getElementById('appearanceSelect');
+
+        if (!settingsButton || !closeSettingsButton || !settingsPanel || !themeOptions || !appearanceSelect) {
+            return;
+        }
+
+        document.body.appendChild(settingsPanel);
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'blue';
+        const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY) || 'auto';
+        applyTheme(savedTheme);
+        applyAppearance(savedAppearance);
+        appearanceSelect.value = savedAppearance;
+
+        settingsButton.addEventListener('click', () => {
+            const isOpen = !settingsPanel.hidden;
+            settingsPanel.hidden = isOpen;
+            settingsButton.setAttribute('aria-expanded', String(!isOpen));
+            if (!isOpen) {
+                positionSettingsPanel(settingsButton, settingsPanel);
+            }
+        });
+
+        closeSettingsButton.addEventListener('click', closeSettings);
+        themeOptions.addEventListener('click', event => {
+            const themeOption = event.target.closest('[data-theme-option]');
+            if (themeOption) {
+                applyTheme(themeOption.dataset.themeOption);
+            }
+        });
+        appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
+        document.addEventListener('click', event => {
+            if (!settingsPanel.hidden && !event.target.closest('.settings-menu') && !event.target.closest('#settingsPanel')) {
+                closeSettings();
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (!settingsPanel.hidden) {
+                positionSettingsPanel(settingsButton, settingsPanel);
+            }
+        });
+    }
+
+    function positionSettingsPanel(button, panel) {
+        const buttonRect = button.getBoundingClientRect();
+        const panelWidth = Math.min(320, window.innerWidth - 24);
+        const right = Math.max(12, window.innerWidth - buttonRect.right);
+        panel.style.width = `${panelWidth}px`;
+        panel.style.top = `${buttonRect.bottom + 12}px`;
+        panel.style.right = `${right}px`;
+    }
+
+    function closeSettings() {
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsButton = document.getElementById('settingsButton');
+        if (settingsPanel) {
+            settingsPanel.hidden = true;
+        }
+        if (settingsButton) {
+            settingsButton.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function applyTheme(theme) {
+        const allowedThemes = ['blue', 'amber', 'teal', 'violet', 'rose', 'lime', 'indigo', 'red', 'yellow', 'green'];
+        const selectedTheme = allowedThemes.includes(theme) ? theme : 'blue';
+        document.documentElement.dataset.theme = selectedTheme;
+        localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
+        document.querySelectorAll('[data-theme-option]').forEach(option => {
+            option.classList.toggle('is-selected', option.dataset.themeOption === selectedTheme);
+        });
+    }
+
+    function applyAppearance(appearance) {
+        const allowedAppearances = ['dark', 'light', 'auto'];
+        const selectedAppearance = allowedAppearances.includes(appearance) ? appearance : 'auto';
+        document.documentElement.dataset.appearance = selectedAppearance;
+        localStorage.setItem(APPEARANCE_STORAGE_KEY, selectedAppearance);
+    }
     renderRouteCards();
     fetchActiveRoutesData();
     startLocationTracking();
@@ -357,7 +444,7 @@ function renderRouteCards() {
 
         card.innerHTML = `
             <div class="flex items-center justify-between">
-                <span class="font-extrabold text-sm px-2 py-0.5 rounded-md border ${route.bgBadge}">
+                <span class="route-code-badge font-extrabold text-sm px-2 py-0.5 rounded-md border ${route.bgBadge}">
                     ${route.id}
                 </span>
                 <span class="w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
