@@ -7,6 +7,8 @@ const RENDER_ROUTE_BASE = 'https://mio-backend-mora.onrender.com/api/recorrido';
 const RENDER_STOPS_BASE = 'https://mio-backend-mora.onrender.com/api/paradas';
 const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas';
 const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
+const THEME_STORAGE_KEY = 'mio-tracker-theme';
+const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
 
 const FEATURED_ROUTES = [
     {
@@ -136,11 +138,71 @@ const MAP_MODES = {
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+    initSettings();
     initMap();
     document.getElementById('routeSearch').addEventListener('input', event => {
         routeSearchTerm = event.target.value.trim().toLowerCase();
         renderRouteCards();
     });
+
+    function initSettings() {
+        const settingsButton = document.getElementById('settingsButton');
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const themeSelect = document.getElementById('themeSelect');
+        const appearanceSelect = document.getElementById('appearanceSelect');
+
+        if (!settingsButton || !closeSettingsButton || !settingsPanel || !themeSelect || !appearanceSelect) {
+            return;
+        }
+
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'blue';
+        const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY) || 'auto';
+        applyTheme(savedTheme);
+        applyAppearance(savedAppearance);
+        themeSelect.value = savedTheme;
+        appearanceSelect.value = savedAppearance;
+
+        settingsButton.addEventListener('click', () => {
+            const isOpen = !settingsPanel.hidden;
+            settingsPanel.hidden = isOpen;
+            settingsButton.setAttribute('aria-expanded', String(!isOpen));
+        });
+
+        closeSettingsButton.addEventListener('click', closeSettings);
+        themeSelect.addEventListener('change', event => applyTheme(event.target.value));
+        appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
+        document.addEventListener('click', event => {
+            if (!settingsPanel.hidden && !event.target.closest('.settings-menu')) {
+                closeSettings();
+            }
+        });
+    }
+
+    function closeSettings() {
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsButton = document.getElementById('settingsButton');
+        if (settingsPanel) {
+            settingsPanel.hidden = true;
+        }
+        if (settingsButton) {
+            settingsButton.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function applyTheme(theme) {
+        const allowedThemes = ['blue', 'amber', 'teal', 'violet'];
+        const selectedTheme = allowedThemes.includes(theme) ? theme : 'blue';
+        document.documentElement.dataset.theme = selectedTheme;
+        localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
+    }
+
+    function applyAppearance(appearance) {
+        const allowedAppearances = ['dark', 'light', 'auto'];
+        const selectedAppearance = allowedAppearances.includes(appearance) ? appearance : 'auto';
+        document.documentElement.dataset.appearance = selectedAppearance;
+        localStorage.setItem(APPEARANCE_STORAGE_KEY, selectedAppearance);
+    }
     renderRouteCards();
     fetchActiveRoutesData();
     startLocationTracking();

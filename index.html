@@ -61,6 +61,37 @@
                 <button onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" class="icon-button">
                     <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm"></i>
                 </button>
+
+                <div class="settings-menu">
+                    <button id="settingsButton" type="button" class="icon-button" aria-expanded="false" aria-controls="settingsPanel" title="Configuración">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                    </button>
+                    <div id="settingsPanel" class="settings-panel" hidden>
+                        <div class="settings-heading">
+                            <strong>Configuración</strong>
+                            <button id="closeSettingsButton" type="button" class="settings-close" aria-label="Cerrar configuración">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <label class="settings-field">
+                            <span>Color de interfaz</span>
+                            <select id="themeSelect">
+                                <option value="blue">Azul</option>
+                                <option value="amber">Ámbar</option>
+                                <option value="teal">Turquesa</option>
+                                <option value="violet">Violeta</option>
+                            </select>
+                        </label>
+                        <label class="settings-field">
+                            <span>Apariencia</span>
+                            <select id="appearanceSelect">
+                                <option value="dark">Oscuro</option>
+                                <option value="light">Claro</option>
+                                <option value="auto">Automático</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </header>

@@ -14,12 +14,122 @@
     --route-red: #f46b72;
     --route-cyan: #58c7d9;
     --route-purple: #77a7ff;
+    --theme-soft: #173554;
+    --theme-hover: #1c3854;
+    --theme-border: #294966;
+    --control-bg: #0b1a2a;
+    --surface-hover: #183650;
+    --surface-selected: #173b61;
+    --surface-muted: #20364c;
+    --scroll-thumb: #31516d;
+    --success-border: #2b6e5a;
     --margin: clamp(12px, 2vw, 28px);
     --gap: clamp(12px, 1.5vw, 20px);
 }
 
+[data-theme="amber"] {
+    --night: #1c1a16;
+    --panel: #29251d;
+    --panel-raised: #393226;
+    --panel-soft: #312b21;
+    --blue: #e1b866;
+    --blue-deep: #b88d3d;
+    --theme-soft: #463d2a;
+    --theme-hover: #55472b;
+    --theme-border: #665b41;
+    --control-bg: #211e18;
+    --surface-hover: #493e2a;
+    --surface-selected: #514329;
+    --surface-muted: #3b3428;
+    --scroll-thumb: #756441;
+    --success-border: #39705b;
+}
+
+[data-theme="teal"] {
+    --night: #101c1d;
+    --panel: #182b2c;
+    --panel-raised: #234040;
+    --panel-soft: #1d3535;
+    --blue: #62c8c1;
+    --blue-deep: #379b96;
+    --theme-soft: #244946;
+    --theme-hover: #2d5c58;
+    --theme-border: #3c6c68;
+    --control-bg: #132324;
+    --surface-hover: #2b5350;
+    --surface-selected: #28504e;
+    --surface-muted: #294442;
+    --scroll-thumb: #477a76;
+    --success-border: #397b65;
+}
+
+[data-theme="violet"] {
+    --night: #171522;
+    --panel: #252137;
+    --panel-raised: #342d4c;
+    --panel-soft: #2c2741;
+    --blue: #b59ad9;
+    --blue-deep: #8368ad;
+    --theme-soft: #3a304b;
+    --theme-hover: #4b3c61;
+    --theme-border: #65537d;
+    --control-bg: #1e1a2d;
+    --surface-hover: #493d61;
+    --surface-selected: #49395f;
+    --surface-muted: #3c3450;
+    --scroll-thumb: #705f89;
+    --success-border: #39705b;
+}
+
+[data-appearance="light"] {
+    color-scheme: light;
+    --night: #eef2f5;
+    --panel: #ffffff;
+    --panel-raised: #e1e8ef;
+    --panel-soft: #f5f8fa;
+    --ink: #172536;
+    --muted: #536579;
+    --quiet: #74869a;
+    --control-bg: #ffffff;
+    --theme-border: #c7d2dc;
+    --surface-hover: #e8eef3;
+    --surface-selected: #dce9f4;
+    --surface-muted: #e1e8ef;
+    --scroll-thumb: #aab9c7;
+    --success-border: #4b9a78;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-appearance="auto"] {
+        color-scheme: light;
+        --night: #eef2f5;
+        --panel: #ffffff;
+        --panel-raised: #e1e8ef;
+        --panel-soft: #f5f8fa;
+        --ink: #172536;
+        --muted: #536579;
+        --quiet: #74869a;
+        --control-bg: #ffffff;
+        --theme-border: #c7d2dc;
+        --surface-hover: #e8eef3;
+        --surface-selected: #dce9f4;
+        --surface-muted: #e1e8ef;
+        --scroll-thumb: #aab9c7;
+        --success-border: #4b9a78;
+    }
+}
+
 * {
     box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.text-blue-400,
+.text-blue-300 {
+    color: var(--blue) !important;
 }
 
 html,
@@ -44,7 +154,7 @@ select {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-    outline: 3px solid rgba(225, 184, 102, 0.52);
+    outline: 3px solid color-mix(in srgb, var(--blue) 52%, transparent);
     outline-offset: 3px;
 }
 
@@ -112,7 +222,57 @@ select:focus-visible {
 
 .icon-button:hover {
     transform: translateY(-2px);
-    background: #1c3854;
+    background: var(--theme-hover);
+}
+
+.settings-menu {
+    position: relative;
+}
+
+.settings-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    z-index: 40;
+    width: min(280px, calc(100vw - 24px));
+    padding: 18px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--theme-border);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.settings-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+
+.settings-close {
+    padding: 4px 6px;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.settings-field {
+    display: grid;
+    gap: 7px;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.settings-field select {
+    width: 100%;
+    padding: 9px 10px;
+    color: var(--ink);
+    background: var(--panel-soft);
+    border: 1px solid var(--theme-border);
+    cursor: pointer;
 }
 
 .app-main {
@@ -166,7 +326,7 @@ select:focus-visible {
 .count-pill {
     padding: 5px 8px;
     color: var(--blue);
-    background: #173554;
+    background: var(--theme-soft);
     font-size: 13px;
     font-weight: 750;
 }
@@ -202,7 +362,7 @@ select:focus-visible {
     padding: 11px 12px;
     color: var(--quiet);
     background: var(--panel-soft);
-    border: 1px solid #24425e;
+    border: 1px solid var(--theme-border);
 }
 
 .route-search:focus-within {
@@ -268,11 +428,11 @@ select:focus-visible {
 
 #routesGrid > div:hover {
     transform: translateY(-2px);
-    background: #18344f !important;
+    background: var(--theme-hover) !important;
 }
 
 #routesGrid > div[class*="border-blue-500"] {
-    background: #173b61 !important;
+    background: var(--theme-soft) !important;
     clip-path: polygon(0 0, 100% 0, 100% 84%, 84% 100%, 0 100%);
 }
 
@@ -288,7 +448,7 @@ select:focus-visible {
 
 #routesGrid .bg-gray-700 {
     color: var(--quiet) !important;
-    background: #20364c !important;
+    background: var(--panel-raised) !important;
 }
 
 #routesGrid .bg-blue-500 {
@@ -332,21 +492,21 @@ select:focus-visible {
 }
 
 #nearestStopContainer .border-gray-700\/60 {
-    border-color: #28455e !important;
+    border-color: var(--theme-border) !important;
 }
 
 .map-shell {
     min-width: 0;
     overflow: hidden;
-    background: #14263a;
+    background: var(--panel);
 }
 
 .map-status,
 .map-control,
 .map-button {
     color: var(--ink);
-    background: #0b1a2a;
-    border: 1px solid #294966;
+    background: var(--control-bg);
+    border: 1px solid var(--theme-border);
 }
 
 .map-status {
@@ -389,12 +549,12 @@ select:focus-visible {
 
 .map-button:hover {
     transform: translateY(-2px);
-    background: #183650;
+    background: var(--theme-hover);
 }
 
 .map-button-accent {
     color: var(--green);
-    border-color: #2b6e5a;
+    border-color: var(--success-border);
 }
 
 .map-button-accent.is-following {
@@ -406,7 +566,7 @@ select:focus-visible {
 .map-legend {
     min-height: 44px;
     color: var(--muted);
-    background: #0b1a2a;
+    background: var(--control-bg);
     font-size: 13px;
 }
 
@@ -439,12 +599,12 @@ select:focus-visible {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #31516d;
+    background: var(--scroll-thumb);
     border-radius: 0;
 }
 
 .leaflet-container {
-    background: #14263a !important;
+    background: var(--panel) !important;
     font-family: inherit;
 }
 
@@ -460,12 +620,12 @@ select:focus-visible {
     width: 31px;
     height: 31px;
     color: var(--ink);
-    background: #0b1a2a;
+    background: var(--control-bg);
 }
 
 .map-mode-select option {
     color: var(--ink);
-    background: #0b1a2a;
+    background: var(--control-bg);
 }
 
 .user-location-marker {
@@ -576,6 +736,32 @@ select:focus-visible {
 
 .leaflet-tooltip-mio::before {
     border-top-color: var(--blue) !important;
+}
+
+[data-appearance="light"] .map-shell .leaflet-control-zoom a,
+[data-appearance="light"] .leaflet-popup-content-wrapper,
+[data-appearance="light"] .leaflet-popup-tip {
+    border-color: var(--theme-border);
+}
+
+[data-appearance="light"] .leaflet-popup-content-wrapper,
+[data-appearance="light"] .leaflet-popup-tip {
+    color: var(--ink) !important;
+    background: var(--panel) !important;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-appearance="auto"] .map-shell .leaflet-control-zoom a,
+    :root[data-appearance="auto"] .leaflet-popup-content-wrapper,
+    :root[data-appearance="auto"] .leaflet-popup-tip {
+        border-color: var(--theme-border);
+    }
+
+    :root[data-appearance="auto"] .leaflet-popup-content-wrapper,
+    :root[data-appearance="auto"] .leaflet-popup-tip {
+        color: var(--ink) !important;
+        background: var(--panel) !important;
+    }
 }
 
 .bus-pulse-ring {
