@@ -444,7 +444,7 @@ function renderRouteCards() {
 
         card.innerHTML = `
             <div class="flex items-center justify-between">
-                <span class="font-extrabold text-sm px-2 py-0.5 rounded-md border ${route.bgBadge}">
+                <span class="route-code-badge font-extrabold text-sm px-2 py-0.5 rounded-md border ${route.bgBadge}">
                     ${route.id}
                 </span>
                 <span class="w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${

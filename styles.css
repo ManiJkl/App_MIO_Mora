@@ -819,6 +819,88 @@ select:focus-visible {
     clip-path: polygon(0 0, 100% 0, 100% 84%, 84% 100%, 0 100%);
 }
 
+[data-appearance="light"] #routesGrid .route-code-badge {
+    color: #172536 !important;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-appearance="auto"] #routesGrid .route-code-badge {
+        color: #172536 !important;
+    }
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-red-500"] {
+    background: #f5c8cc !important;
+    border-color: #d9828a !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-amber-500"] {
+    background: #f1ddb0 !important;
+    border-color: #c9a64e !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-emerald-500"] {
+    background: #c4e5d5 !important;
+    border-color: #65aa88 !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-cyan-500"] {
+    background: #c3e7eb !important;
+    border-color: #6aaeb8 !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-blue-500"] {
+    background: #c9dcf3 !important;
+    border-color: #78a4d0 !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-purple-500"] {
+    background: #ddd0ef !important;
+    border-color: #a78ac8 !important;
+}
+
+[data-appearance="light"] #routesGrid .route-code-badge[class*="bg-pink-500"] {
+    background: #f0cce0 !important;
+    border-color: #c77da4 !important;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-red-500"] {
+        background: #f5c8cc !important;
+        border-color: #d9828a !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-amber-500"] {
+        background: #f1ddb0 !important;
+        border-color: #c9a64e !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-emerald-500"] {
+        background: #c4e5d5 !important;
+        border-color: #65aa88 !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-cyan-500"] {
+        background: #c3e7eb !important;
+        border-color: #6aaeb8 !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-blue-500"] {
+        background: #c9dcf3 !important;
+        border-color: #78a4d0 !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-purple-500"] {
+        background: #ddd0ef !important;
+        border-color: #a78ac8 !important;
+    }
+
+    :root[data-appearance="auto"] #routesGrid .route-code-badge[class*="bg-pink-500"] {
+        background: #f0cce0 !important;
+        border-color: #c77da4 !important;
+    }
+}
+
 [data-appearance="light"] #routesGrid > div[class*="border-blue-500"] {
     background: var(--surface-selected) !important;
 }
