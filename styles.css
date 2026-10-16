@@ -663,11 +663,13 @@ select:focus-visible {
     max-width: none;
     padding: 0 var(--margin) var(--margin);
     gap: var(--gap);
+    min-height: 0;
 }
 
 .app-sidebar {
     width: clamp(300px, 25vw, 380px);
     gap: var(--gap);
+    min-height: 0;
 }
 
 .surface-card,
@@ -687,7 +689,7 @@ select:focus-visible {
 }
 
 .nearest-card {
-    min-height: 0;
+    min-height: 220px;
 }
 
 .section-title {
@@ -789,6 +791,7 @@ select:focus-visible {
     gap: 8px !important;
     overflow-y: auto;
     min-height: 0;
+    flex: 1 1 auto;
     padding-right: 3px;
 }
 
@@ -1286,10 +1289,42 @@ select:focus-visible {
 
     .nearest-card {
         min-height: 310px;
+        order: 1;
+    }
+
+    .route-selector {
+        order: 2;
     }
 
     .map-shell {
         min-height: 65vh;
+    }
+}
+
+@media (min-width: 1024px) {
+    .app-sidebar {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .nearest-card {
+        order: 1;
+        flex: 0 0 clamp(260px, 34vh, 380px) !important;
+        height: clamp(260px, 34vh, 380px);
+        min-height: 260px !important;
+        max-height: 380px;
+    }
+
+    .route-selector {
+        order: 2;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .nearest-card {
+        min-height: 260px !important;
     }
 }
 
