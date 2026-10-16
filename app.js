@@ -149,34 +149,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const settingsButton = document.getElementById('settingsButton');
         const closeSettingsButton = document.getElementById('closeSettingsButton');
         const settingsPanel = document.getElementById('settingsPanel');
-        const themeSelect = document.getElementById('themeSelect');
+        const themeOptions = document.getElementById('themeOptions');
         const appearanceSelect = document.getElementById('appearanceSelect');
 
-        if (!settingsButton || !closeSettingsButton || !settingsPanel || !themeSelect || !appearanceSelect) {
+        if (!settingsButton || !closeSettingsButton || !settingsPanel || !themeOptions || !appearanceSelect) {
             return;
         }
 
+        document.body.appendChild(settingsPanel);
         const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'blue';
         const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY) || 'auto';
         applyTheme(savedTheme);
         applyAppearance(savedAppearance);
-        themeSelect.value = savedTheme;
         appearanceSelect.value = savedAppearance;
 
         settingsButton.addEventListener('click', () => {
             const isOpen = !settingsPanel.hidden;
             settingsPanel.hidden = isOpen;
             settingsButton.setAttribute('aria-expanded', String(!isOpen));
+            if (!isOpen) {
+                positionSettingsPanel(settingsButton, settingsPanel);
+            }
         });
 
         closeSettingsButton.addEventListener('click', closeSettings);
-        themeSelect.addEventListener('change', event => applyTheme(event.target.value));
+        themeOptions.addEventListener('click', event => {
+            const themeOption = event.target.closest('[data-theme-option]');
+            if (themeOption) {
+                applyTheme(themeOption.dataset.themeOption);
+            }
+        });
         appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
         document.addEventListener('click', event => {
-            if (!settingsPanel.hidden && !event.target.closest('.settings-menu')) {
+            if (!settingsPanel.hidden && !event.target.closest('.settings-menu') && !event.target.closest('#settingsPanel')) {
                 closeSettings();
             }
         });
+        window.addEventListener('resize', () => {
+            if (!settingsPanel.hidden) {
+                positionSettingsPanel(settingsButton, settingsPanel);
+            }
+        });
+    }
+
+    function positionSettingsPanel(button, panel) {
+        const buttonRect = button.getBoundingClientRect();
+        const panelWidth = Math.min(320, window.innerWidth - 24);
+        const right = Math.max(12, window.innerWidth - buttonRect.right);
+        panel.style.width = `${panelWidth}px`;
+        panel.style.top = `${buttonRect.bottom + 12}px`;
+        panel.style.right = `${right}px`;
     }
 
     function closeSettings() {
@@ -191,10 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyTheme(theme) {
-        const allowedThemes = ['blue', 'amber', 'teal', 'violet'];
+        const allowedThemes = ['blue', 'amber', 'teal', 'violet', 'rose', 'lime', 'indigo', 'red', 'yellow', 'green'];
         const selectedTheme = allowedThemes.includes(theme) ? theme : 'blue';
         document.documentElement.dataset.theme = selectedTheme;
         localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
+        document.querySelectorAll('[data-theme-option]').forEach(option => {
+            option.classList.toggle('is-selected', option.dataset.themeOption === selectedTheme);
+        });
     }
 
     function applyAppearance(appearance) {
