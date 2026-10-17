@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyTheme(theme) {
-        const allowedThemes = ['blue', 'amber', 'teal', 'violet', 'rose', 'lime', 'indigo', 'red', 'yellow', 'green'];
+        const allowedThemes = ['blue', 'amber', 'teal', 'violet', 'rose', 'lime', 'indigo', 'red', 'yellow', 'green', 'white', 'black'];
         const selectedTheme = allowedThemes.includes(theme) ? theme : 'blue';
         document.documentElement.dataset.theme = selectedTheme;
         localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);

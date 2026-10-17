@@ -189,6 +189,42 @@
     --success-border: #397b65;
 }
 
+[data-theme="white"] {
+    --night: #1b1d21;
+    --panel: #292c31;
+    --panel-raised: #3a3e45;
+    --panel-soft: #32363d;
+    --blue: #ffffff;
+    --blue-deep: #d9dde3;
+    --theme-soft: #4a4f58;
+    --theme-hover: #565c66;
+    --theme-border: #737a85;
+    --control-bg: #24272c;
+    --surface-hover: #444950;
+    --surface-selected: #4c525b;
+    --surface-muted: #3d4249;
+    --scroll-thumb: #747b86;
+    --success-border: #6aa68a;
+}
+
+[data-theme="black"] {
+    --night: #000000;
+    --panel: #0a0a0a;
+    --panel-raised: #171717;
+    --panel-soft: #101010;
+    --blue: #f2f2f2;
+    --blue-deep: #bdbdbd;
+    --theme-soft: #292929;
+    --theme-hover: #353535;
+    --theme-border: #4c4c4c;
+    --control-bg: #050505;
+    --surface-hover: #242424;
+    --surface-selected: #303030;
+    --surface-muted: #1d1d1d;
+    --scroll-thumb: #5b5b5b;
+    --success-border: #5f987a;
+}
+
 [data-appearance="light"] {
     color-scheme: light;
     --night: #eef2f5;
@@ -225,6 +261,40 @@
         --scroll-thumb: #aab9c7;
         --success-border: #4b9a78;
     }
+
+    :root[data-appearance="auto"][data-theme="white"] {
+        --night: #f3f4f6;
+        --panel: #ffffff;
+        --panel-raised: #e5e7eb;
+        --panel-soft: #f9fafb;
+        --blue: #4b5563;
+        --blue-deep: #374151;
+        --theme-soft: #e5e7eb;
+        --theme-hover: #d1d5db;
+        --theme-border: #9ca3af;
+        --control-bg: #ffffff;
+        --surface-hover: #eef0f2;
+        --surface-selected: #e2e5e9;
+        --surface-muted: #e5e7eb;
+        --scroll-thumb: #aab0b8;
+    }
+
+    :root[data-appearance="auto"][data-theme="black"] {
+        --night: #f3f4f6;
+        --panel: #ffffff;
+        --panel-raised: #e5e7eb;
+        --panel-soft: #f9fafb;
+        --blue: #111827;
+        --blue-deep: #000000;
+        --theme-soft: #d1d5db;
+        --theme-hover: #bfc4cc;
+        --theme-border: #4b5563;
+        --control-bg: #ffffff;
+        --surface-hover: #e5e7eb;
+        --surface-selected: #d1d5db;
+        --surface-muted: #e5e7eb;
+        --scroll-thumb: #6b7280;
+    }
 }
 
 [data-appearance="light"][data-theme="blue"],
@@ -236,7 +306,9 @@
 [data-appearance="light"][data-theme="indigo"],
 [data-appearance="light"][data-theme="red"],
 [data-appearance="light"][data-theme="yellow"],
-[data-appearance="light"][data-theme="green"] {
+[data-appearance="light"][data-theme="green"],
+[data-appearance="light"][data-theme="white"],
+[data-appearance="light"][data-theme="black"] {
     --night: #edf2f6;
     --panel: #ffffff;
     --panel-raised: #e1e8ef;
@@ -314,6 +386,28 @@
     --theme-border: #9cbd91;
 }
 
+[data-appearance="light"][data-theme="white"] {
+    --blue: #4b5563;
+    --blue-deep: #374151;
+    --theme-soft: #e5e7eb;
+    --theme-hover: #d1d5db;
+    --theme-border: #9ca3af;
+    --surface-hover: #eef0f2;
+    --surface-selected: #e2e5e9;
+    --scroll-thumb: #aab0b8;
+}
+
+[data-appearance="light"][data-theme="black"] {
+    --blue: #111827;
+    --blue-deep: #000000;
+    --theme-soft: #d1d5db;
+    --theme-hover: #bfc4cc;
+    --theme-border: #4b5563;
+    --surface-hover: #e5e7eb;
+    --surface-selected: #d1d5db;
+    --scroll-thumb: #6b7280;
+}
+
 @media (prefers-color-scheme: light) {
     :root[data-appearance="auto"][data-theme="amber"] {
         --night: #f4f0e5;
@@ -376,6 +470,30 @@
         --surface-selected: #d0e7ca;
         --surface-muted: #dbead7;
         --theme-border: #9cbd91;
+    }
+
+    :root[data-appearance="auto"][data-theme="white"] {
+        --night: #f3f4f6;
+        --panel: #ffffff;
+        --panel-raised: #e5e7eb;
+        --panel-soft: #f9fafb;
+        --control-bg: #ffffff;
+        --surface-hover: #eef0f2;
+        --surface-selected: #e2e5e9;
+        --surface-muted: #e5e7eb;
+        --theme-border: #9ca3af;
+    }
+
+    :root[data-appearance="auto"][data-theme="black"] {
+        --night: #f3f4f6;
+        --panel: #ffffff;
+        --panel-raised: #e5e7eb;
+        --panel-soft: #f9fafb;
+        --control-bg: #ffffff;
+        --surface-hover: #e5e7eb;
+        --surface-selected: #d1d5db;
+        --surface-muted: #e5e7eb;
+        --theme-border: #4b5563;
     }
 }
 
@@ -648,6 +766,8 @@ select:focus-visible {
 .swatch-red { background: #f07878; }
 .swatch-yellow { background: #f0cf63; }
 .swatch-green { background: #6ed39a; }
+.swatch-white { background: #ffffff; border-color: #9ca3af; }
+.swatch-black { background: #111111; }
 
 .settings-field select {
     width: 100%;
