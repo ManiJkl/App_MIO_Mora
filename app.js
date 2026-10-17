@@ -113,6 +113,11 @@ let locationRequestInProgress = false;
 let followUserLocation = false;
 let nearestStopKey = null;
 let nearestArrivalsRequestId = 0;
+let filteredUserLocation = null;
+
+const GPS_FILTER_MIN_ALPHA = 0.15;
+const GPS_FILTER_MAX_ALPHA = 0.65;
+const GPS_RECENTER_THRESHOLD_METERS = 25;
 
 const MAP_MODES = {
     dark: {
@@ -315,39 +320,63 @@ function startLocationTracking() {
 
 function updateUserLocation(position) {
     const { latitude, longitude, accuracy } = position.coords;
-    const userLatLng = [latitude, longitude];
+    const previousLocation = filteredUserLocation;
+    const filterAlpha = previousLocation
+        ? Math.min(
+            GPS_FILTER_MAX_ALPHA,
+            Math.max(GPS_FILTER_MIN_ALPHA, 12 / Math.max(accuracy, 12))
+        )
+        : 1;
+
+    filteredUserLocation = previousLocation
+        ? {
+            lat: previousLocation.lat + (latitude - previousLocation.lat) * filterAlpha,
+            lng: previousLocation.lng + (longitude - previousLocation.lng) * filterAlpha
+        }
+        : { lat: latitude, lng: longitude };
+
+    const userLatLng = [filteredUserLocation.lat, filteredUserLocation.lng];
     const shouldCenterMap = !userLocationMarker || followUserLocation;
-    userCoordinates = { lat: latitude, lng: longitude };
+    userCoordinates = filteredUserLocation;
 
-    if (userLocationMarker) {
-        map.removeLayer(userLocationMarker);
+    if (!userLocationAccuracy) {
+        userLocationAccuracy = L.circle(userLatLng, {
+            radius: accuracy,
+            color: '#34d399',
+            fillColor: '#34d399',
+            fillOpacity: 0.12,
+            weight: 1
+        }).addTo(map);
+    } else {
+        userLocationAccuracy.setLatLng(userLatLng);
+        userLocationAccuracy.setRadius(accuracy);
     }
-    if (userLocationAccuracy) {
-        map.removeLayer(userLocationAccuracy);
+
+    if (!userLocationMarker) {
+        userLocationMarker = L.marker(userLatLng, {
+            icon: L.divIcon({
+                className: 'user-location-marker',
+                html: '<span class="user-location-dot"></span>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
+            }),
+            title: 'Mi ubicación'
+        })
+            .addTo(map)
+            .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
+    } else {
+        userLocationMarker.setLatLng(userLatLng);
+        userLocationMarker.setPopupContent(
+            `<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`
+        );
     }
 
-    userLocationAccuracy = L.circle(userLatLng, {
-        radius: accuracy,
-        color: '#34d399',
-        fillColor: '#34d399',
-        fillOpacity: 0.12,
-        weight: 1
-    }).addTo(map);
-
-    userLocationMarker = L.marker(userLatLng, {
-        icon: L.divIcon({
-            className: 'user-location-marker',
-            html: '<span class="user-location-dot"></span>',
-            iconSize: [22, 22],
-            iconAnchor: [11, 11]
-        }),
-        title: 'Mi ubicación'
-    })
-        .addTo(map)
-        .bindPopup(`<strong>Mi ubicación</strong><br>Precisión aproximada: ${Math.round(accuracy)} m`);
-
-    if (shouldCenterMap) {
-        map.flyTo(userLatLng, 16, { duration: 1 });
+    if (shouldCenterMap && (
+        !previousLocation ||
+        getDistanceInMeters(previousLocation.lat, previousLocation.lng, userLatLng[0], userLatLng[1])
+            >= GPS_RECENTER_THRESHOLD_METERS
+    )) {
+        map.panTo(userLatLng, { animate: true, duration: 0.35, noMoveStart: true });
     }
 
     document.getElementById('lastUpdated').innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
