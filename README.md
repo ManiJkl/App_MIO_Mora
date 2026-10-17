@@ -4,7 +4,7 @@ Aplicación web para monitorear rutas del sistema MIO de Cali en un mapa
 interactivo. Permite seleccionar rutas, consultar la ubicación de los buses y
 ver las próximas llegadas en la parada más cercana.
 
-## Funcionalidades
+## Funcionalidade
 
 - Visualización de buses y recorridos sobre un mapa de Leaflet.
 - Selección y búsqueda entre las rutas MIO disponibles.
