@@ -12,6 +12,8 @@ ver las próximas llegadas en la parada más cercana.
 - Consulta de la parada más cercana y de sus próximas llegadas.
 - Seguimiento de la ubicación del usuario mediante GPS.
 - Modos de mapa: satélite, calles y terreno.
+- Capa opcional de tráfico en vivo de TomTom.
+- La capa de tráfico está limitada geográficamente al área de Cali.
 - Temas de color y apariencia oscura, clara o automática.
 - Persistencia local de las rutas seleccionadas, el tema y la apariencia.
 
@@ -55,6 +57,10 @@ requiere un proceso de compilación ni instalación de dependencias locales.
 5. Activa **Seguimiento** y concede permiso de ubicación para consultar la
    parada más cercana y sus próximas llegadas.
 6. Cambia el tipo de mapa o la apariencia desde los controles disponibles.
+7. Para ver el tráfico, abre **Configuración**, pega tu clave de TomTom y usa
+   el botón **Tráfico** sobre el mapa. El desarrollador debe configurar la
+   constante `TOMTOM_API_KEY` en `app.js`; la misma clave se usa para todos
+   los usuarios.
 
 ## Arquitectura
 
@@ -80,4 +86,6 @@ servicios cartográficos externos.
 
 La ubicación solo se solicita cuando el usuario activa **Seguimiento** y el
 navegador pide permiso. Las preferencias de rutas y apariencia se guardan
-localmente en el navegador mediante `localStorage`.
+localmente en el navegador mediante `localStorage`. La clave de TomTom se
+incluye en las solicitudes del navegador a TomTom, por lo que debe restringirse
+en el portal de TomTom a los dominios autorizados.
