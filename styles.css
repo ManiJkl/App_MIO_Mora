@@ -1150,6 +1150,12 @@ select:focus-visible {
     background: var(--theme-hover);
 }
 
+.map-button.is-active {
+    color: var(--ink);
+    background: var(--theme-soft);
+    outline: 1px solid var(--blue);
+}
+
 .map-button-accent {
     color: var(--green);
     border-color: var(--success-border);

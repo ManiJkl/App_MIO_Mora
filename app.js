@@ -9,6 +9,11 @@ const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas
 const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 const THEME_STORAGE_KEY = 'mio-tracker-theme';
 const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
+const TOMTOM_API_KEY = 'gMnPtcEnZf43HD4ce4MNriH7UIwnROU8';
+const CALI_TRAFFIC_BOUNDS = [
+    [3.25, -76.65],
+    [3.55, -76.45]
+];
 
 const FEATURED_ROUTES = [
     {
@@ -102,6 +107,8 @@ let stopDataByRoute = {};
 let stopLayersByRoute = {};
 let map = null;
 let tileLayer = null;
+let trafficLayer = null;
+let trafficEnabled = false;
 let autoRefreshTimer = null;
 let routeFetchDebounceTimer = null;
 let currentMapMode = 'satellite'; // Default map mode
@@ -255,6 +262,7 @@ function initMap() {
         updateLocateButtonState();
     });
     changeMapMode(currentMapMode);
+    updateTrafficButtonState();
 }
 
 function recenterMap() {
@@ -439,6 +447,63 @@ function changeMapMode(mode) {
     if (mapModeSelect) {
         mapModeSelect.value = mode;
     }
+}
+
+function toggleTraffic() {
+    if (!TOMTOM_API_KEY || TOMTOM_API_KEY === 'REPLACE_WITH_YOUR_TOMTOM_API_KEY') {
+        document.getElementById('lastUpdated').innerText = 'Configura TOMTOM_API_KEY en app.js para activar el tráfico.';
+        return;
+    }
+
+    setTrafficEnabled(!trafficEnabled);
+}
+
+function setTrafficEnabled(enabled) {
+    if (!map) {
+        return;
+    }
+
+    if (enabled) {
+        if (!trafficLayer) {
+            trafficLayer = L.tileLayer(
+                `https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${encodeURIComponent(TOMTOM_API_KEY)}`,
+                {
+                    attribution: '&copy; TomTom',
+                    maxZoom: 22,
+                    opacity: 0.75,
+                    bounds: CALI_TRAFFIC_BOUNDS
+                }
+            );
+        }
+        trafficLayer.addTo(map);
+        trafficEnabled = true;
+    } else {
+        if (trafficLayer) {
+            map.removeLayer(trafficLayer);
+        }
+        trafficLayer = null;
+        trafficEnabled = false;
+    }
+
+    updateTrafficButtonState();
+}
+
+function updateTrafficButtonState() {
+    const button = document.getElementById('trafficToggleButton');
+    const icon = document.getElementById('trafficToggleIcon');
+    const text = document.getElementById('trafficToggleText');
+    if (!button || !icon || !text) {
+        return;
+    }
+
+    const hasApiKey = TOMTOM_API_KEY !== 'REPLACE_WITH_YOUR_TOMTOM_API_KEY';
+    button.classList.toggle('is-active', trafficEnabled);
+    button.setAttribute('aria-pressed', String(trafficEnabled));
+    button.title = hasApiKey
+        ? `${trafficEnabled ? 'Desactivar' : 'Activar'} tráfico TomTom`
+        : 'Configurar tráfico TomTom';
+    text.innerText = trafficEnabled ? 'Tráfico activo' : 'Tráfico';
+    icon.className = `fa-solid ${trafficEnabled ? 'fa-toggle-on text-emerald-400' : 'fa-traffic-light text-amber-400'}`;
 }
 
 /* ==========================================================================
