@@ -930,6 +930,7 @@ function updateNearestStopPanel() {
             <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
                 <i class="fa-solid fa-road-barrier text-2xl mb-2 text-amber-400/70"></i>
                 <p class="text-xs text-gray-300">No hay paradas disponibles</p>
+                <a href="#rutas_seleccionar" class="mi-boton">Ir a seleccionar rutas</a>
                 <p class="text-[10px] text-gray-500 mt-1">Selecciona al menos una ruta para consultar sus paradas.</p>
             </div>
         `;
