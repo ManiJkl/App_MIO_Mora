@@ -21,7 +21,6 @@ const FEATURED_ROUTES = [
         name: 'T12 Andrés Sanín - Centro - Cll 5ta',
         type: 'TRONCAL',
         color: '#ef4444', // Red
-        bgBadge: 'bg-red-500/20 text-red-300 border-red-500/40',
         desc: 'Conecta Oriente con Troncal Cll 5ta'
     },
     {
@@ -29,7 +28,6 @@ const FEATURED_ROUTES = [
         name: 'P40B Andrés Sanín - Centro',
         type: 'PRETRONCAL',
         color: '#f59e0b', // Amber
-        bgBadge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
         desc: 'Pretroncal por la Cra 8va'
     },
     {
@@ -37,7 +35,6 @@ const FEATURED_ROUTES = [
         name: 'A11 Universidades - Javeriana - Icesi',
         type: 'ALIMENTADOR',
         color: '#10b981', // Emerald
-        bgBadge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
         desc: 'Corredor Universitario Pance'
     },
     {
@@ -45,7 +42,6 @@ const FEATURED_ROUTES = [
         name: 'A14A Universidades - San Buenaventura',
         type: 'ALIMENTADOR',
         color: '#58c7d9', // Cyan
-        bgBadge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
         desc: 'Conexión Universidad San Buenaventura'
     }
 ];
@@ -91,7 +87,6 @@ const TARGET_ROUTES = ALL_ROUTE_CODES.map((routeId, index) => {
         name: `${routeId} · Ruta MIO`,
         type: routeType,
         color,
-        bgBadge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
         desc: `Servicio ${routeType.toLowerCase()}`
     };
 });
@@ -192,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            applyAppearance(document.documentElement.dataset.appearance);
+        });
         document.addEventListener('click', event => {
             if (!settingsPanel.hidden && !event.target.closest('.settings-menu') && !event.target.closest('#settingsPanel')) {
                 closeSettings();
@@ -237,7 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyAppearance(appearance) {
         const allowedAppearances = ['dark', 'light', 'auto'];
         const selectedAppearance = allowedAppearances.includes(appearance) ? appearance : 'auto';
+        const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
         document.documentElement.dataset.appearance = selectedAppearance;
+        document.documentElement.dataset.mode = selectedAppearance === 'auto'
+            ? (prefersLight ? 'light' : 'dark')
+            : selectedAppearance;
         localStorage.setItem(APPEARANCE_STORAGE_KEY, selectedAppearance);
     }
     renderRouteCards();
@@ -256,7 +258,7 @@ function initMap() {
     // Centered on Cali, Colombia
     map = L.map('map', { zoomControl: false }).setView([3.4250, -76.5350], 12);
 
-    L.control.zoom({ position: 'topright' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     map.on('dragstart', () => {
         followUserLocation = false;
         updateLocateButtonState();
@@ -300,7 +302,7 @@ function startLocationTracking() {
 
     locationRequestInProgress = true;
     button.disabled = true;
-    button.classList.add('opacity-60', 'cursor-wait');
+    button.classList.add('is-busy');
     icon.classList.remove('fa-location-crosshairs');
     icon.classList.add('fa-spinner', 'fa-spin');
     status.innerText = 'Buscando tu ubicación...';
@@ -416,10 +418,10 @@ function updateLocateButtonState() {
 
     if (locationRequestInProgress) {
         button.disabled = true;
-        button.classList.add('opacity-60', 'cursor-wait');
+        button.classList.add('is-busy');
     } else {
         button.disabled = false;
-        button.classList.remove('opacity-60', 'cursor-wait');
+        button.classList.remove('is-busy');
     }
 
     button.classList.toggle('is-following', followUserLocation);
@@ -503,7 +505,7 @@ function updateTrafficButtonState() {
         ? `${trafficEnabled ? 'Desactivar' : 'Activar'} tráfico TomTom`
         : 'Configurar tráfico TomTom';
     text.innerText = trafficEnabled ? 'Tráfico activo' : 'Tráfico';
-    icon.className = `fa-solid ${trafficEnabled ? 'fa-toggle-on text-emerald-400' : 'fa-traffic-light text-amber-400'}`;
+    icon.className = `fa-solid ${trafficEnabled ? 'fa-toggle-on text-success' : 'fa-traffic-light text-warning'}`;
 }
 
 /* ==========================================================================
@@ -527,44 +529,64 @@ function renderRouteCards() {
         const isSelected = selectedRoutes.includes(route.id);
         const activeCount = (busDataByRoute[route.id] || []).length;
 
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.onclick = () => toggleRouteSelection(route.id);
-
-        card.className = `p-3 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2 select-none ${
-            isSelected 
-                ? 'bg-gray-700/80 border-blue-500/80 shadow-md shadow-blue-500/10' 
-                : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/40 opacity-60'
-        }`;
+        card.className = `route-card${isSelected ? ' is-selected' : ''}`;
+        card.style.setProperty('--route-color', route.color);
+        card.setAttribute('aria-pressed', String(isSelected));
+        card.title = route.name;
 
         card.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span class="route-code-badge font-extrabold text-sm px-2 py-0.5 rounded-md border ${route.bgBadge}">
-                    ${route.id}
-                </span>
-                <span class="w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
-                    isSelected ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'
-                }">
+            <span class="route-card-top">
+                <span class="route-code">${route.id}</span>
+                <span class="route-check" aria-hidden="true">
                     <i class="fa-solid ${isSelected ? 'fa-check' : 'fa-plus'}"></i>
                 </span>
-            </div>
-            <div class="flex items-center justify-between text-[11px] text-gray-300 font-medium">
-                <span class="truncate pr-1">${route.type}</span>
-                <span class="font-bold text-xs ${activeCount > 0 ? 'text-emerald-400' : 'text-gray-500'}">
-                    ${activeCount} buses
+            </span>
+            <span class="route-card-meta">
+                <span class="route-type">${route.type}</span>
+                <span class="route-buses${activeCount > 0 ? ' has-buses' : ''}">
+                    ${activeCount} ${activeCount === 1 ? 'bus' : 'buses'}
                 </span>
-            </div>
+            </span>
         `;
 
         container.appendChild(card);
     });
 
-    document.getElementById('selectedCount').innerText = `${selectedRoutes.length} activas`;
+    document.getElementById('selectedCount').innerText =
+        `${selectedRoutes.length} ${selectedRoutes.length === 1 ? 'activa' : 'activas'}`;
     document.getElementById('routesResultCount').innerText =
         `${visibleRoutes.length} de ${TARGET_ROUTES.length} rutas`;
 
     if (visibleRoutes.length === 0) {
         container.innerHTML = '<div class="route-empty-state">No se encontraron rutas con esa búsqueda.</div>';
     }
+
+    renderMapLegend();
+}
+
+function renderMapLegend() {
+    const legend = document.getElementById('mapLegend');
+    if (!legend) {
+        return;
+    }
+
+    const routes = selectedRoutes
+        .map(routeId => TARGET_ROUTES.find(route => route.id === routeId))
+        .filter(Boolean);
+
+    legend.innerHTML = routes.length > 0
+        ? routes.map(route =>
+            `<span class="legend-item" style="--route-color: ${route.color}">${route.id}</span>`
+        ).join('')
+        : '<span>Sin rutas en el mapa</span>';
+}
+
+function setConnectionStatus(state, text) {
+    document.getElementById('statusBadge').dataset.state = state;
+    document.getElementById('statusText').innerText = text;
 }
 
 function toggleRouteSelection(routeId) {
@@ -620,19 +642,14 @@ function saveSelectedRoutes() {
    ========================================================================== */
 
 async function fetchActiveRoutesData() {
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
     const refreshIcon = document.getElementById('refreshIcon');
 
     refreshIcon.classList.add('fa-spin');
-    statusDot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
-    statusText.innerText = 'Consultando MIO...';
-    statusText.classList.remove('text-red-400'); // Limpiar color rojo previo si lo había
+    setConnectionStatus('loading', 'Consultando MIO...');
 
     if (selectedRoutes.length === 0) {
         refreshIcon.classList.remove('fa-spin');
-        statusDot.className = 'w-2 h-2 rounded-full bg-gray-400';
-        statusText.innerText = 'Selecciona una ruta';
+        setConnectionStatus('idle', 'Selecciona una ruta');
         document.getElementById('lastUpdated').innerHTML = 'Sin rutas seleccionadas';
         updateBusMarkers();
         updateRoutePaths();
@@ -686,25 +703,21 @@ async function fetchActiveRoutesData() {
         // 1. AÑADE LA CAPA ROJA: Solo cuando hay error crítico
         document.documentElement.setAttribute('data-server-error', 'true');
         
-        statusDot.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]';
-        statusText.innerText = 'Servidor Caído (503)';
-        statusText.classList.add('text-red-400');
-        document.getElementById('lastUpdated').innerHTML = '<span class="text-red-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> API fuera de servicio temporalmente</span>';
+        setConnectionStatus('error', 'Servidor caído (503)');
+        document.getElementById('lastUpdated').innerHTML = '<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> API fuera de servicio temporalmente</span>';
         
     } else if (hasSuccess) {
         // 2. QUITA LA CAPA ROJA: Restaura el tema original (Verde)
         document.documentElement.removeAttribute('data-server-error');
 
-        statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-        statusText.innerText = 'Servidor Render Activo';
+        setConnectionStatus('ok', 'En línea');
         document.getElementById('lastUpdated').innerText = `Actualizado: ${new Date().toLocaleTimeString('es-CO')}`;
         
     } else {
         // 3. QUITA LA CAPA ROJA: Restaura el tema original (Naranja)
         document.documentElement.removeAttribute('data-server-error');
 
-        statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
-        statusText.innerText = 'Despertando servidor...';
+        setConnectionStatus('warn', 'Despertando servidor...');
         document.getElementById('lastUpdated').innerText = 'Reintentando conexión...';
     }
 
@@ -849,14 +862,27 @@ function updateRouteStops() {
     });
 }
 
-function createStopPopupContent(stop, routeMeta, message = 'Haz clic en la parada para consultar llegadas.') {
+function createStopPopupContent(stop, routeMeta, message = '<div class="popup-message">Haz clic en la parada para consultar llegadas.</div>') {
     return `
-        <div class="stop-popup p-1 min-w-[220px]">
-            <div class="stop-popup-heading">
-                <div class="font-extrabold text-sm text-gray-100">${stop.nombre}</div>
-                <span class="stop-popup-route" style="background-color: ${routeMeta.color}">${routeMeta.id}</span>
+        <div class="popup">
+            <div class="popup-heading">
+                <div class="popup-title">${stop.nombre}</div>
+                <span class="route-chip" style="--route-color: ${routeMeta.color}">${routeMeta.id}</span>
             </div>
             ${message}
+        </div>
+    `;
+}
+
+function createArrivalsList(arrivals, fallbackLine) {
+    return `
+        <div class="arrivals-list">
+            ${arrivals.map(arrival => `
+                <div class="arrival-row">
+                    <span class="arrival-line"><i class="fa-solid fa-bus"></i>${arrival.nombreLinea || fallbackLine}</span>
+                    <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                </div>
+            `).join('')}
         </div>
     `;
 }
@@ -866,7 +892,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
         stopLayer.setPopupContent(createStopPopupContent(
             stop,
             routeMeta,
-            '<div class="text-xs text-red-300">Esta parada no tiene un ID válido para consultar llegadas.</div>'
+            '<div class="popup-message is-danger">Esta parada no tiene un ID válido para consultar llegadas.</div>'
         ));
         return;
     }
@@ -874,7 +900,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
     stopLayer.setPopupContent(createStopPopupContent(
         stop,
         routeMeta,
-        '<div class="text-xs text-amber-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...</div>'
+        '<div class="popup-message is-warning"><i class="fa-solid fa-spinner fa-spin"></i>Consultando llegadas...</div>'
     ));
 
     try {
@@ -890,17 +916,8 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
             : [];
 
         const arrivalsContent = arrivals.length > 0
-            ? `
-                <div class="stop-arrivals-list">
-                    ${sortArrivalsByCountdown(arrivals).map(arrival => `
-                        <div class="stop-arrival-row">
-                            <strong class="text-gray-300">${arrival.nombreLinea || routeMeta.id}</strong>
-                            <span class="font-bold text-emerald-400 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `
-            : '<div class="text-xs text-gray-400">No hay buses próximos reportados.</div>';
+            ? createArrivalsList(sortArrivalsByCountdown(arrivals), routeMeta.id)
+            : '<div class="arrivals-empty">No hay buses próximos reportados.</div>';
 
         stopLayer.setPopupContent(createStopPopupContent(stop, routeMeta, arrivalsContent));
     } catch (err) {
@@ -908,7 +925,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
         stopLayer.setPopupContent(createStopPopupContent(
             stop,
             routeMeta,
-            '<div class="text-xs text-red-300">No se pudieron consultar las llegadas. Intenta nuevamente.</div>'
+            '<div class="popup-message is-danger">No se pudieron consultar las llegadas. Intenta nuevamente.</div>'
         ));
     }
 }
@@ -951,11 +968,11 @@ function updateNearestStopPanel() {
         nearestStopKey = null;
         nearestArrivalsRequestId += 1;
         container.innerHTML = `
-            <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
-                <i class="fa-solid fa-road-barrier text-2xl mb-2 text-amber-400/70"></i>
-                <p class="text-xs text-gray-300">No hay paradas disponibles</p>
-                <a href="#rutas_seleccionar" class="mi-boton">Ir a seleccionar rutas</a>
-                <p class="text-[10px] text-gray-500 mt-1">Selecciona al menos una ruta para consultar sus paradas.</p>
+            <div class="empty-state">
+                <span class="empty-state-icon is-warning"><i class="fa-solid fa-road-barrier"></i></span>
+                <p class="empty-state-title">No hay paradas disponibles</p>
+                <p class="empty-state-text">Selecciona al menos una ruta para consultar sus paradas.</p>
+                <a href="#rutas_seleccionar" class="link-button">Seleccionar rutas <i class="fa-solid fa-arrow-down"></i></a>
             </div>
         `;
         return;
@@ -972,21 +989,24 @@ function updateNearestStopPanel() {
     if (nearestStopKey !== stopKey) {
         nearestStopKey = stopKey;
         container.innerHTML = `
-            <div data-nearest-stop-key="${stopKey}" class="rounded-xl border border-emerald-700/40 p-3">
-                <div class="flex items-start justify-between gap-2">
+            <div data-nearest-stop-key="${stopKey}" class="nearest-stop">
+                <div class="nearest-stop-head">
                     <div>
-                                <div class="nearest-stop-meta">A ${formatDistance(distance)}</div>
-                        <h4 class="text-sm font-extrabold text-gray-100 mt-1">${nearestStop.stop.nombre}</h4>
+                        <div class="nearest-stop-meta">
+                            <i class="fa-solid fa-person-walking"></i>
+                            A <span id="nearestStopDistance">${formatDistance(distance)}</span>
+                        </div>
+                        <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
                     </div>
-                    <span class="text-[10px] font-bold px-2 py-1 rounded-full text-white" style="background-color: ${nearestStop.route.color}">
+                    <span class="route-chip" style="--route-color: ${nearestStop.route.color}">
                         ${nearestStop.route.id}
                     </span>
                 </div>
-                <div id="nearestArrivalsStatus" class="mt-3 text-xs text-amber-300" aria-live="polite">
-                    <i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...
+                <div id="nearestArrivalsStatus" class="nearest-status" data-state="loading" aria-live="polite">
+                    <i class="fa-solid fa-spinner fa-spin"></i>Consultando llegadas...
                 </div>
-                <div id="nearestArrivals" class="mt-2">
-                    <div class="text-xs text-gray-400">Esperando información de llegadas...</div>
+                <div id="nearestArrivals">
+                    <div class="arrivals-empty">Esperando información de llegadas...</div>
                 </div>
             </div>
         `;
@@ -1039,7 +1059,8 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
     }
 
     const requestId = ++nearestArrivalsRequestId;
-    statusContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Consultando llegadas...';
+    statusContainer.dataset.state = 'loading';
+    statusContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Consultando llegadas...';
 
     try {
         const response = await fetch(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
@@ -1057,24 +1078,17 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
         }
 
         arrivalsContainer.innerHTML = arrivals.length > 0
-            ? `
-                <div class="stop-arrivals-list">
-                    ${arrivals.map(arrival => `
-                        <div class="stop-arrival-row">
-                            <div class="text-xs font-bold text-gray-200">${arrival.nombreLinea || route.id}</div>
-                            <span class="text-xs font-black text-emerald-300 whitespace-nowrap">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `
-            : '<div class="text-xs text-gray-400">No hay buses próximos reportados.</div>';
-        statusContainer.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Llegadas actualizadas';
+            ? createArrivalsList(arrivals, route.id)
+            : '<div class="arrivals-empty">No hay buses próximos reportados.</div>';
+        statusContainer.dataset.state = 'ok';
+        statusContainer.innerHTML = '<i class="fa-solid fa-check"></i>Llegadas actualizadas';
     } catch (err) {
         console.warn(`Error al consultar llegadas de la parada ${stop.id}:`, err);
         if (requestId !== nearestArrivalsRequestId || nearestStopKey !== stopKey) {
             return;
         }
-        statusContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>No se pudo actualizar';
+        statusContainer.dataset.state = 'error';
+        statusContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>No se pudo actualizar';
     }
 }
 
@@ -1134,14 +1148,10 @@ function updateBusMarkers() {
 
 function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
     const iconHtml = `
-        <div class="relative flex items-center justify-center">
-            <div class="absolute w-7 h-7 rounded-full opacity-40 bus-pulse-ring" style="background-color: ${routeMeta.color}"></div>
-            <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-black shadow-lg border-2 border-gray-900" style="background-color: ${routeMeta.color}">
-                <i class="fa-solid fa-bus"></i>
-            </div>
-            <div class="absolute -bottom-4 bg-gray-900/90 text-white text-[9px] font-bold px-1 rounded border border-gray-700 whitespace-nowrap shadow">
-                ${routeMeta.id}
-            </div>
+        <div class="bus-marker" style="--route-color: ${routeMeta.color}">
+            <span class="bus-marker-pulse"></span>
+            <span class="bus-marker-icon"><i class="fa-solid fa-bus"></i></span>
+            <span class="bus-marker-label">${routeMeta.id}</span>
         </div>
     `;
 
@@ -1167,12 +1177,12 @@ function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
 
 function createBusPopupContent(routeMeta, busCode, bus) {
     return `
-            <div class="bus-popup p-1">
-                <div class="bus-popup-heading">
-                    <span class="font-extrabold text-sm text-gray-100">Ruta ${routeMeta.id}</span>
-                    <span class="bus-popup-status">En movimiento</span>
+            <div class="popup">
+                <div class="popup-heading">
+                    <span class="popup-title">Ruta ${routeMeta.id}</span>
+                    <span class="popup-status">En movimiento</span>
                 </div>
-                <p class="text-xs text-gray-300 font-medium mt-2">Ubicación actualizada por GPS</p>
+                <p class="popup-text"><i class="fa-solid fa-satellite-dish"></i>Ubicación actualizada por GPS</p>
             </div>
         `;
 }
