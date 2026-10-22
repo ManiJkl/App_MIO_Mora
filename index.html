@@ -1,30 +1,28 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full">
+<html lang="es" data-theme="blue" data-appearance="auto" data-mode="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIO Mora</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MIO Tracker</title>
+    <meta name="description" content="Ubicación en tiempo real de los buses del MIO en Cali.">
     <link rel="icon" type="image/png" href="icon.png">
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Apply saved theme before first paint to avoid a flash -->
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    }
-                }
+        (function () {
+            var root = document.documentElement;
+            try {
+                var appearance = localStorage.getItem('mio-tracker-appearance') || 'auto';
+                var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                root.dataset.theme = localStorage.getItem('mio-tracker-theme') || 'blue';
+                root.dataset.appearance = appearance;
+                root.dataset.mode = appearance === 'auto' ? (prefersLight ? 'light' : 'dark') : appearance;
+            } catch (error) {
+                // Storage unavailable: keep defaults from the <html> attributes
             }
-        }
+        })();
     </script>
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ME2E5HNNJK"></script>
     <script>
@@ -35,190 +33,174 @@
         gtag('config', 'G-ME2E5HNNJK');
     </script>
 
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    
+
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Custom Stylesheet -->
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="app-shell text-gray-100 h-full font-sans antialiased flex flex-col overflow-hidden">
+<body>
 
     <!-- Top Navigation Bar -->
-    <header class="app-header sticky top-0 z-30 px-4 py-3">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <img src="icon.png" alt="MIO Tracker Logo" class="w-10 h-10 rounded-full">
-                <!-- <div class="brand-mark">
-                    <i class="fa-solid fa-bus-simple"></i>
-                </div> -->
-                <div>
-                    <h1 class="brand-title">
-                        MIO Tracker
-                    </h1>
-                    <p class="brand-subtitle">MIO's real-time mobility</p>
-                </div>
+    <header class="app-header">
+        <div class="brand">
+            <img src="icon.png" alt="" class="brand-logo" width="40" height="40">
+            <div class="brand-text">
+                <h1 class="brand-title">MIO Tracker</h1>
+                <p class="brand-subtitle">Movilidad del MIO en tiempo real</p>
+            </div>
+        </div>
+
+        <!-- Header Status Badge & Controls -->
+        <div class="header-actions">
+            <div id="statusBadge" class="status-badge" data-state="loading" role="status" aria-live="polite">
+                <span id="statusDot" class="status-dot"></span>
+                <span id="statusText" class="status-text">Conectando...</span>
             </div>
 
-            <!-- Header Status Badges & Controls -->
-            <div class="flex items-center gap-2">
-                <div id="statusBadge" class="status-badge">
-                    <span id="statusDot" class="status-dot bg-blue-400"></span>
-                    <span id="statusText" class="hidden sm:inline">Conectando...</span>
-                </div>
+            <button type="button" onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" aria-label="Refrescar ubicaciones" class="icon-button">
+                <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
+            </button>
 
-                <button onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" class="icon-button">
-                    <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-sm"></i>
+            <div class="settings-menu">
+                <button id="settingsButton" type="button" class="icon-button" aria-expanded="false" aria-controls="settingsPanel" title="Configuración" aria-label="Configuración">
+                    <i class="fa-solid fa-gear"></i>
                 </button>
-
-                <div class="settings-menu">
-                    <button id="settingsButton" type="button" class="icon-button" aria-expanded="false" aria-controls="settingsPanel" title="Configuración">
-                        <i class="fa-solid fa-gear text-sm"></i>
-                    </button>
-                    <div id="settingsPanel" class="settings-panel" hidden>
-                        <div class="settings-heading">
-                            <strong>Configuración</strong>
-                            <button id="closeSettingsButton" type="button" class="settings-close" aria-label="Cerrar configuración">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <fieldset class="settings-field">
-                            <legend>Color de interfaz</legend>
-                            <div id="themeOptions" class="theme-options">
-                                <button type="button" class="theme-option" data-theme-option="blue"><span class="theme-swatch swatch-blue"></span>Azul</button>
-                                <button type="button" class="theme-option" data-theme-option="amber"><span class="theme-swatch swatch-amber"></span>Ámbar</button>
-                                <button type="button" class="theme-option" data-theme-option="teal"><span class="theme-swatch swatch-teal"></span>Turquesa</button>
-                                <button type="button" class="theme-option" data-theme-option="violet"><span class="theme-swatch swatch-violet"></span>Violeta</button>
-                                <button type="button" class="theme-option" data-theme-option="rose"><span class="theme-swatch swatch-rose"></span>Rosa</button>
-                                <button type="button" class="theme-option" data-theme-option="lime"><span class="theme-swatch swatch-lime"></span>Lima</button>
-                                <button type="button" class="theme-option" data-theme-option="indigo"><span class="theme-swatch swatch-indigo"></span>Índigo</button>
-                                <button type="button" class="theme-option" data-theme-option="red"><span class="theme-swatch swatch-red"></span>Rojo</button>
-                                <button type="button" class="theme-option" data-theme-option="yellow"><span class="theme-swatch swatch-yellow"></span>Amarillo</button>
-                                <button type="button" class="theme-option" data-theme-option="green"><span class="theme-swatch swatch-green"></span>Verde</button>
-                                <button type="button" class="theme-option" data-theme-option="white"><span class="theme-swatch swatch-white"></span>Blanco</button>
-                                <button type="button" class="theme-option" data-theme-option="black"><span class="theme-swatch swatch-black"></span>Negro</button>
-                            </div>
-                        </fieldset>
-                        <label class="settings-field">
-                            <span>Apariencia</span>
-                            <select id="appearanceSelect">
-                                <option value="dark">Oscuro</option>
-                                <option value="light">Claro</option>
-                                <option value="auto">Automático</option>
-                            </select>
-                        </label>
+                <div id="settingsPanel" class="settings-panel" hidden>
+                    <div class="settings-heading">
+                        <strong>Configuración</strong>
+                        <button id="closeSettingsButton" type="button" class="settings-close" aria-label="Cerrar configuración">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                     </div>
+                    <fieldset class="settings-field">
+                        <legend class="settings-label">Color de interfaz</legend>
+                        <div id="themeOptions" class="theme-options">
+                            <button type="button" class="theme-option" data-theme-option="blue"><span class="theme-swatch swatch-blue"></span>Azul</button>
+                            <button type="button" class="theme-option" data-theme-option="amber"><span class="theme-swatch swatch-amber"></span>Ámbar</button>
+                            <button type="button" class="theme-option" data-theme-option="teal"><span class="theme-swatch swatch-teal"></span>Turquesa</button>
+                            <button type="button" class="theme-option" data-theme-option="violet"><span class="theme-swatch swatch-violet"></span>Violeta</button>
+                            <button type="button" class="theme-option" data-theme-option="rose"><span class="theme-swatch swatch-rose"></span>Rosa</button>
+                            <button type="button" class="theme-option" data-theme-option="lime"><span class="theme-swatch swatch-lime"></span>Lima</button>
+                            <button type="button" class="theme-option" data-theme-option="indigo"><span class="theme-swatch swatch-indigo"></span>Índigo</button>
+                            <button type="button" class="theme-option" data-theme-option="red"><span class="theme-swatch swatch-red"></span>Rojo</button>
+                            <button type="button" class="theme-option" data-theme-option="yellow"><span class="theme-swatch swatch-yellow"></span>Amarillo</button>
+                            <button type="button" class="theme-option" data-theme-option="green"><span class="theme-swatch swatch-green"></span>Verde</button>
+                            <button type="button" class="theme-option" data-theme-option="white"><span class="theme-swatch swatch-white"></span>Blanco</button>
+                            <button type="button" class="theme-option" data-theme-option="black"><span class="theme-swatch swatch-black"></span>Negro</button>
+                        </div>
+                    </fieldset>
+                    <label class="settings-field">
+                        <span class="settings-label">Apariencia</span>
+                        <select id="appearanceSelect" class="select">
+                            <option value="dark">Oscuro</option>
+                            <option value="light">Claro</option>
+                            <option value="auto">Automático</option>
+                        </select>
+                    </label>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Layout Container -->
-    <main class="app-main flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4 overflow-hidden relative">
-        
-        <!-- Sidebar Controls & Favorite Routes -->
-        <aside class="app-sidebar w-full lg:w-96 flex flex-col gap-4 flex-shrink-0 z-20">
-            
-            <!-- Quick Route Selector -->
-            <div id="rutas_seleccionar" class="surface-card route-selector flex flex-col gap-3">
-                <div class="flex items-center justify-between">
-                    <h2 class="section-title">
-                        <i class="fa-solid fa-sliders text-blue-400"></i>
-                        Rutas activas
-                    </h2>
-                    <span id="selectedCount" class="count-pill">
-                        0 activas
-                    </span>
-                </div>
+    <!-- Main Layout -->
+    <main class="app-main">
 
-                <label class="route-search">
-                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <input id="routeSearch" type="search" placeholder="Buscar ruta, código o tipo" autocomplete="off">
-                </label>
-                <div class="route-results-summary">
-                    <span id="routesResultCount">0 de 0 rutas</span>
-                    <span>Selecciona las que quieras monitorear</span>
-                </div>
-
-                <div id="routesGrid" class="grid grid-cols-2 gap-2.5 pt-1">
-                    <!-- Tarjetas generadas dinámicamente en app.js -->
-                </div>
+        <!-- Nearest Stop Information -->
+        <section class="card nearest-card" aria-labelledby="nearestTitle">
+            <div class="card-header">
+                <h2 id="nearestTitle" class="card-title">
+                    <span class="card-icon is-success"><i class="fa-solid fa-location-dot"></i></span>
+                    Parada más cercana
+                </h2>
             </div>
 
-            <!-- Nearest Stop Information -->
-            <div class="surface-card nearest-card flex-1 flex flex-col min-h-[220px] lg:min-h-0 overflow-hidden">
-                <div class="card-heading">
-                    <h3 class="section-title">
-                        <i class="fa-solid fa-location-dot text-emerald-400"></i>
-                        Parada más cercana
-                    </h3>
-                    <!-- <span class="live-label"><span></span> En vivo</span> -->
-                </div>
-
-                <div id="nearestStopContainer" class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                    <div class="h-full flex flex-col items-center justify-center p-5 text-center text-gray-500">
-                        <i class="fa-solid fa-location-crosshairs text-2xl mb-2 text-emerald-400/70"></i>
-                        <p class="text-xs text-gray-300">Busca la parada más cercana</p>
-                        <p class="text-[10px] text-gray-500 mt-1">Usa el botón “Mi ubicación” para ver las próximas llegadas.</p>
-                    </div>
+            <div id="nearestStopContainer" class="nearest-body scroll-area">
+                <div class="empty-state">
+                    <span class="empty-state-icon"><i class="fa-solid fa-location-crosshairs"></i></span>
+                    <p class="empty-state-title">Busca la parada más cercana</p>
+                    <p class="empty-state-text">Permite el acceso a tu ubicación para ver las próximas llegadas.</p>
                 </div>
             </div>
+        </section>
 
-        </aside>
+        <!-- Interactive Map -->
+        <section class="map-shell" aria-label="Mapa de buses">
 
-        <!-- Interactive Map Display -->
-        <section class="map-shell flex-1 flex flex-col overflow-hidden relative min-h-[350px] lg:min-h-0">
-            
             <!-- Floating Map Controls -->
-            <div class="absolute top-3 left-3 right-3 z-[1000] flex justify-between items-center pointer-events-none">
-                <div class="map-status pointer-events-auto">
-                    <span class="status-dot bg-emerald-500"></span>
-                    <span>API: <code class="text-blue-400 font-mono">mio-backend-mora</code></span>
+            <div class="map-toolbar">
+                <div class="map-chip map-status">
+                    <span class="status-dot is-ok"></span>
+                    <span>API <code>mio-backend-mora</code></span>
                 </div>
 
-                <div class="pointer-events-auto flex items-center gap-2">
-                    <label for="mapMode" class="sr-only">Modo del mapa</label>
-                    <div class="map-control">
-                        <i class="fa-solid fa-layer-group text-blue-400 text-xs" aria-hidden="true"></i>
-                        <select id="mapMode" onchange="changeMapMode(this.value)" title="Cambiar modo del mapa" class="map-mode-select bg-transparent text-xs font-bold text-gray-200 py-1.5 outline-none cursor-pointer">
+                <div class="map-actions">
+                    <label class="map-select" title="Cambiar modo del mapa">
+                        <i class="fa-solid fa-layer-group text-accent" aria-hidden="true"></i>
+                        <span class="sr-only">Modo del mapa</span>
+                        <select id="mapMode" onchange="changeMapMode(this.value)">
                             <!-- <option value="dark">Oscuro</option> NO SIRVE -->
                             <option value="satellite" selected>Satélite</option>
-                            <option value="street" >Calles</option>
+                            <option value="street">Calles</option>
                             <option value="terrain">Terreno</option>
                         </select>
-                    </div>
-                    <button onclick="recenterMap()" title="Centrar mapa en Cali" class="map-button">
-                        <i class="fa-solid fa-crosshairs text-blue-400"></i>
-                        <span class="hidden sm:inline">Centrar</span>
+                    </label>
+                    <button type="button" onclick="recenterMap()" title="Centrar mapa en Cali" aria-label="Centrar mapa en Cali" class="map-button">
+                        <i class="fa-solid fa-crosshairs text-accent"></i>
+                        <span class="btn-label">Centrar</span>
                     </button>
-                    <button id="trafficToggleButton" onclick="toggleTraffic()" title="Configurar tráfico TomTom" class="map-button">
-                        <i id="trafficToggleIcon" class="fa-solid fa-traffic-light text-amber-400"></i>
-                        <span id="trafficToggleText" class="hidden sm:inline">Tráfico</span>
+                    <button id="trafficToggleButton" type="button" onclick="toggleTraffic()" title="Configurar tráfico TomTom" aria-label="Tráfico" class="map-button">
+                        <i id="trafficToggleIcon" class="fa-solid fa-traffic-light text-warning"></i>
+                        <span id="trafficToggleText" class="btn-label">Tráfico</span>
                     </button>
-                    <button id="locateMeButton" onclick="locateUser()" title="Activar seguimiento de ubicación" class="map-button map-button-accent">
-                        <i id="locateMeIcon" class="fa-solid fa-location-crosshairs text-emerald-400"></i>
-                        <span class="hidden sm:inline">Seguimiento</span>
+                    <button id="locateMeButton" type="button" onclick="locateUser()" title="Activar seguimiento de ubicación" aria-label="Seguir mi ubicación" class="map-button map-button-accent">
+                        <i id="locateMeIcon" class="fa-solid fa-location-crosshairs"></i>
+                        <span class="btn-label">Seguimiento</span>
                     </button>
                 </div>
             </div>
 
             <!-- Leaflet Canvas -->
-            <div id="map" class="w-full h-full z-10 min-h-[350px]"></div>
+            <div id="map" class="map-canvas"></div>
 
-            <!-- Map Bottom Legend -->
-            <div class="map-legend px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-400 z-20">
-                <div class="flex items-center gap-3">
-                    <span class="text-gray-500">Buses:</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> T12</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> P40B</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> A11</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> A14A</span>
-                </div>
-                <div id="lastUpdated" class="italic text-gray-500">Esperando sincronización...</div>
+            <!-- Map Footer: legend + sync status -->
+            <footer class="map-footer">
+                <div id="mapLegend" class="map-legend"></div>
+                <div id="lastUpdated" class="map-updated">Esperando sincronización...</div>
+            </footer>
+        </section>
+
+        <!-- Route Selector -->
+        <section id="rutas_seleccionar" class="card routes-card" aria-labelledby="routesTitle">
+            <div class="card-header">
+                <h2 id="routesTitle" class="card-title">
+                    <span class="card-icon"><i class="fa-solid fa-route"></i></span>
+                    Rutas activas
+                </h2>
+                <span id="selectedCount" class="count-pill">0 activas</span>
             </div>
 
+            <label class="route-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <span class="sr-only">Buscar ruta</span>
+                <input id="routeSearch" type="search" placeholder="Buscar ruta, código o tipo" autocomplete="off">
+            </label>
+            <div class="route-results-summary">
+                <span id="routesResultCount">0 de 0 rutas</span>
+                <span>Toca para monitorear</span>
+            </div>
+
+            <div id="routesGrid" class="routes-grid scroll-area">
+                <!-- Tarjetas generadas dinámicamente en app.js -->
+            </div>
         </section>
 
     </main>
