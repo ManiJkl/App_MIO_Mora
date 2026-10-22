@@ -627,12 +627,13 @@ async function fetchActiveRoutesData() {
     refreshIcon.classList.add('fa-spin');
     statusDot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
     statusText.innerText = 'Consultando MIO...';
+    statusText.classList.remove('text-red-400'); // Limpiar color rojo previo si lo había
 
     if (selectedRoutes.length === 0) {
         refreshIcon.classList.remove('fa-spin');
         statusDot.className = 'w-2 h-2 rounded-full bg-gray-400';
         statusText.innerText = 'Selecciona una ruta';
-        document.getElementById('lastUpdated').innerText = 'Sin rutas seleccionadas';
+        document.getElementById('lastUpdated').innerHTML = 'Sin rutas seleccionadas';
         updateBusMarkers();
         updateRoutePaths();
         updateRouteStops();
@@ -641,6 +642,7 @@ async function fetchActiveRoutesData() {
     }
 
     let hasSuccess = false;
+    let serverError = false; // <-- NUEVA BANDERA PARA DETECTAR CAÍDAS
 
     // Fetch data for all selected routes concurrently
     const promises = selectedRoutes.map(async (routeId) => {
@@ -661,10 +663,15 @@ async function fetchActiveRoutesData() {
                 hasSuccess = true;
             } else {
                 busDataByRoute[routeId] = [];
+                // <-- SI RESPONDE 503 O CUALQUIER ERROR 500, MARCAR COMO CAÍDO
+                if (response.status === 503 || response.status >= 500) {
+                    serverError = true;
+                }
             }
         } catch (err) {
             console.warn(`Error al consultar ruta ${routeId}:`, err);
             busDataByRoute[routeId] = busDataByRoute[routeId] || [];
+            serverError = true; // Un error de red (servidor apagado) también cuenta como caído
         }
     });
 
@@ -674,15 +681,32 @@ async function fetchActiveRoutesData() {
 
     refreshIcon.classList.remove('fa-spin');
 
-    if (hasSuccess) {
+   // <-- NUEVA LÓGICA VISUAL PARA EL ERROR 503
+    if (serverError && !hasSuccess) {
+        // 1. AÑADE LA CAPA ROJA: Solo cuando hay error crítico
+        document.documentElement.setAttribute('data-server-error', 'true');
+        
+        statusDot.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]';
+        statusText.innerText = 'Servidor Caído (503)';
+        statusText.classList.add('text-red-400');
+        document.getElementById('lastUpdated').innerHTML = '<span class="text-red-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> API fuera de servicio temporalmente</span>';
+        
+    } else if (hasSuccess) {
+        // 2. QUITA LA CAPA ROJA: Restaura el tema original (Verde)
+        document.documentElement.removeAttribute('data-server-error');
+
         statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
         statusText.innerText = 'Servidor Render Activo';
+        document.getElementById('lastUpdated').innerText = `Actualizado: ${new Date().toLocaleTimeString('es-CO')}`;
+        
     } else {
-        statusDot.className = 'w-2 h-2 rounded-full bg-blue-400';
-        statusText.innerText = 'Servidor en Reposo / Reintentando';
-    }
+        // 3. QUITA LA CAPA ROJA: Restaura el tema original (Naranja)
+        document.documentElement.removeAttribute('data-server-error');
 
-    document.getElementById('lastUpdated').innerText = `Actualizado: ${new Date().toLocaleTimeString('es-CO')}`;
+        statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        statusText.innerText = 'Despertando servidor...';
+        document.getElementById('lastUpdated').innerText = 'Reintentando conexión...';
+    }
 
     renderRouteCards();
     updateBusMarkers();

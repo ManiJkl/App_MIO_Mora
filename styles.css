@@ -1548,3 +1548,50 @@ select:focus-visible {
         transition-duration: 0.01ms !important;
     }
 }
+
+
+/* =========================================================
+   MODO ERROR: FUERZA EL TEMA ROJO SI EL SERVIDOR SE CAE
+   ========================================================= */
+:root[data-server-error="true"] {
+    --night: #241719 !important;
+    --panel: #382124 !important;
+    --panel-raised: #512d31 !important;
+    --panel-soft: #44272b !important;
+    --blue: #f07878 !important;
+    --blue-deep: #c34d55 !important;
+    --theme-soft: #5a3035 !important;
+    --theme-hover: #6b3a40 !important;
+    --theme-border: #875158 !important;
+    --control-bg: #2c1a1d !important;
+    --surface-hover: #5f3338 !important;
+    --surface-selected: #66343a !important;
+    --surface-muted: #4d2c31 !important;
+    --scroll-thumb: #9a6268 !important;
+}
+
+[data-appearance="light"][data-server-error="true"] {
+    --night: #f8edef !important;
+    --panel: #fffafb !important;
+    --panel-raised: #f0dce1 !important;
+    --panel-soft: #fbedf0 !important;
+    --control-bg: #fffafb !important;
+    --surface-hover: #f4e0e5 !important;
+    --surface-selected: #eccfd7 !important;
+    --surface-muted: #efdde2 !important;
+    --theme-border: #cf9aa8 !important;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-appearance="auto"][data-server-error="true"] {
+        --night: #f8edef !important;
+        --panel: #fffafb !important;
+        --panel-raised: #f0dce1 !important;
+        --panel-soft: #fbedf0 !important;
+        --control-bg: #fffafb !important;
+        --surface-hover: #f4e0e5 !important;
+        --surface-selected: #eccfd7 !important;
+        --surface-muted: #efdde2 !important;
+        --theme-border: #cf9aa8 !important;
+    }
+}
