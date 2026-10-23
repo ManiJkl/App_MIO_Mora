@@ -527,7 +527,7 @@ select option {
     padding: 0 var(--gutter) var(--gutter);
 }
 
-.nearest-card { grid-area: nearest; max-height: 42vh; }
+.nearest-card { grid-area: nearest; height: 300px; }
 .routes-card { grid-area: routes; }
 .map-shell { grid-area: map; }
 
@@ -1383,10 +1383,13 @@ select option {
 
     .nearest-card {
         max-height: none;
+        height: auto;
     }
 
     .nearest-body {
         max-height: 340px;
+        flex:none;
+        height: 240px;
     }
 
     .map-shell {
