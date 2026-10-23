@@ -98,7 +98,16 @@ let busDataByRoute = {};
 let mapMarkers = {};
 let routePointsByRoute = {};
 let routeLayers = {};
+const STOP_RADIUS = 7;
+const STOP_RADIUS_FOCUSED = 11;
+const STOP_RADIUS_NEAREST = 10;
+let stopRenderer = null;
+let stopHaloRenderer = null;
+let stopHalos = {};
+let stopPulseTargets = {};
+let stopAnimationFrame = null;
 let stopDataByRoute = {};
+const failedStopRoutes = new Set();
 let stopLayersByRoute = {};
 let map = null;
 let tileLayer = null;
@@ -263,6 +272,7 @@ function initMap() {
         followUserLocation = false;
         updateLocateButtonState();
     });
+    map.on('moveend', refreshStopMarkerStyles);
     changeMapMode(currentMapMode);
     updateTrafficButtonState();
 }
@@ -821,10 +831,13 @@ async function fetchRouteStops(routeId) {
         }
 
         stopDataByRoute[routeId] = validStops;
+        failedStopRoutes.delete(routeId);
         updateRouteStops();
         updateNearestStopPanel();
     } catch (err) {
         console.warn(`Error al consultar paradas de ruta ${routeId}:`, err);
+        failedStopRoutes.add(routeId);
+        updateNearestStopPanel();
     }
 }
 
@@ -848,18 +861,176 @@ function updateRouteStops() {
 
         stopLayersByRoute[routeId] = stops.map(stop => {
             const stopLayer = L.circleMarker([stop.lat, stop.lng], {
-                radius: 5,
+                radius: STOP_RADIUS,
                 color: '#ffffff',
-                weight: 1.5,
+                weight: 2,
                 fillColor: routeMeta.color,
-                fillOpacity: 1
+                fillOpacity: 1,
+                renderer: getStopRenderer()
             }).bindPopup(createStopPopupContent(stop, routeMeta));
 
+            stopLayer.stopData = stop;
+            stopLayer.routeMeta = routeMeta;
             stopLayer.on('click', () => fetchStopArrivals(stop, routeMeta, stopLayer));
             stopLayer.addTo(map);
             return stopLayer;
         });
     });
+
+    refreshStopMarkerStyles();
+}
+
+function getStopRenderer() {
+    // Tolerancia extra para que tocar cerca del punto en celular también lo seleccione
+    if (!stopRenderer) {
+        // Pane propio por encima de los trayectos (overlayPane = 400) y debajo de los buses (markerPane = 600)
+        const stopsPane = map.getPane('stopsPane') || map.createPane('stopsPane');
+        stopsPane.style.zIndex = 450;
+        stopRenderer = L.canvas({ padding: 0.5, tolerance: 12, pane: 'stopsPane' });
+    }
+    return stopRenderer;
+}
+
+function refreshStopMarkerStyles() {
+    if (!map) {
+        return;
+    }
+
+    const allLayers = Object.values(stopLayersByRoute).flat();
+    if (allLayers.length === 0) {
+        stopPulseTargets = {};
+        startStopAnimation();
+        return;
+    }
+
+    const nearest = findNearestStop();
+    const center = map.getCenter();
+
+    // La parada más cercana al centro de la pantalla es la que se agranda
+    let focusedLayer = null;
+    let focusedDistance = Infinity;
+    allLayers.forEach(layer => {
+        if (!map.getBounds().contains(layer.getLatLng())) {
+            return;
+        }
+        const distance = center.distanceTo(layer.getLatLng());
+        if (distance < focusedDistance) {
+            focusedDistance = distance;
+            focusedLayer = layer;
+        }
+    });
+
+    let nearestLayer = null;
+    allLayers.forEach(layer => {
+        const isNearest = nearest
+            && layer.stopData === nearest.stop
+            && layer.routeMeta.id === nearest.route.id;
+        const isFocused = layer === focusedLayer;
+
+        if (isNearest) {
+            nearestLayer = layer;
+            layer.targetRadius = isFocused ? STOP_RADIUS_NEAREST + 3 : STOP_RADIUS_NEAREST;
+            layer.setStyle({
+                color: '#111827',
+                weight: 4,
+                fillColor: '#ffffff'
+            });
+            layer.bringToFront();
+        } else {
+            layer.targetRadius = isFocused ? STOP_RADIUS_FOCUSED : STOP_RADIUS;
+            layer.setStyle({
+                color: '#ffffff',
+                weight: 2,
+                fillColor: layer.routeMeta.color
+            });
+        }
+    });
+
+    stopPulseTargets = {
+        nearest: nearestLayer,
+        focused: focusedLayer && focusedLayer !== nearestLayer ? focusedLayer : null
+    };
+    startStopAnimation();
+}
+
+function startStopAnimation() {
+    if (!stopAnimationFrame) {
+        stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
+    }
+}
+
+function getStopHalo(key) {
+    if (!stopHalos[key]) {
+        if (!stopHaloRenderer) {
+            const haloPane = map.getPane('stopHaloPane') || map.createPane('stopHaloPane');
+            haloPane.style.zIndex = 445;
+            stopHaloRenderer = L.canvas({ padding: 0.5, pane: 'stopHaloPane' });
+        }
+        stopHalos[key] = L.circleMarker([0, 0], {
+            radius: 0,
+            weight: 3,
+            fill: false,
+            opacity: 0,
+            interactive: false,
+            renderer: stopHaloRenderer
+        });
+    }
+    return stopHalos[key];
+}
+
+function animateStopMarkers(now) {
+    stopAnimationFrame = null;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let keepRunning = false;
+
+    // Crecimiento suave del radio hacia el tamaño objetivo
+    Object.values(stopLayersByRoute).flat().forEach(layer => {
+        const target = layer.targetRadius;
+        if (target === undefined) {
+            return;
+        }
+        const current = layer.getRadius();
+        if (reduceMotion || Math.abs(target - current) < 0.05) {
+            if (current !== target) {
+                layer.setRadius(target);
+            }
+            return;
+        }
+        layer.setRadius(current + (target - current) * 0.2);
+        keepRunning = true;
+    });
+
+    // Halo pulsante: rojo/oscuro para la más cercana al usuario, color de ruta para la enfocada
+    const pulse = (now % 1500) / 1500;
+    ['nearest', 'focused'].forEach(key => {
+        const layer = stopPulseTargets[key];
+        const halo = stopHalos[key] || (layer && getStopHalo(key));
+
+        if (!halo) {
+            return;
+        }
+        if (!layer || reduceMotion) {
+            if (map.hasLayer(halo)) {
+                map.removeLayer(halo);
+            }
+            return;
+        }
+
+        if (!map.hasLayer(halo)) {
+            halo.addTo(map);
+        }
+        halo.setLatLng(layer.getLatLng());
+        halo.setRadius(layer.getRadius() + pulse * (key === 'nearest' ? 18 : 12));
+        halo.setStyle({
+            color: key === 'nearest' ? '#ef4444' : layer.routeMeta.color,
+            opacity: (1 - pulse) * 0.8
+        });
+        keepRunning = true;
+    });
+
+    if (keepRunning) {
+        stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
+    }
 }
 
 function createStopPopupContent(stop, routeMeta, message = '<div class="popup-message">Haz clic en la parada para consultar llegadas.</div>') {
@@ -967,6 +1138,21 @@ function updateNearestStopPanel() {
     if (!nearestStop) {
         nearestStopKey = null;
         nearestArrivalsRequestId += 1;
+
+        const stopsLoading = selectedRoutes.some(
+            routeId => !stopDataByRoute[routeId] && !failedStopRoutes.has(routeId)
+        );
+        if (stopsLoading) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="empty-state-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                    <p class="empty-state-title">Cargando paradas...</p>
+                    <p class="empty-state-text">Buscando la parada más cercana en tus rutas seleccionadas.</p>
+                </div>
+            `;
+            return;
+        }
+
         container.innerHTML = `
             <div class="empty-state">
                 <span class="empty-state-icon is-warning"><i class="fa-solid fa-road-barrier"></i></span>
@@ -1017,6 +1203,7 @@ function updateNearestStopPanel() {
         }
     }
 
+    refreshStopMarkerStyles();
     fetchNearestStopArrivals(nearestStop.stop, nearestStop.route, stopKey);
 }
 
