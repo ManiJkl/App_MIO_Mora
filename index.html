@@ -36,7 +36,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -55,7 +55,7 @@
             <img src="icon.png" alt="" class="brand-logo" width="40" height="40">
             <div class="brand-text">
                 <h1 class="brand-title">MIO Tracker</h1>
-                <p class="brand-subtitle">Movilidad del MIO en tiempo real</p>
+                <p class="brand-subtitle">Buses del MIO en tiempo real</p>
             </div>
         </div>
 
@@ -115,37 +115,14 @@
         </div>
     </header>
 
-    <!-- Main Layout -->
+    <!-- Main Layout: full-bleed map with a floating dock -->
     <main class="app-main">
-
-        <!-- Nearest Stop Information -->
-        <section class="card nearest-card" aria-labelledby="nearestTitle">
-            <div class="card-header">
-                <h2 id="nearestTitle" class="card-title">
-                    <span class="card-icon is-success"><i class="fa-solid fa-location-dot"></i></span>
-                    Parada más cercana
-                </h2>
-            </div>
-
-            <div id="nearestStopContainer" class="nearest-body scroll-area">
-                <div class="empty-state">
-                    <span class="empty-state-icon"><i class="fa-solid fa-location-crosshairs"></i></span>
-                    <p class="empty-state-title">Busca la parada más cercana</p>
-                    <p class="empty-state-text">Permite el acceso a tu ubicación para ver las próximas llegadas.</p>
-                </div>
-            </div>
-        </section>
 
         <!-- Interactive Map -->
         <section class="map-shell" aria-label="Mapa de buses">
 
             <!-- Floating Map Controls -->
             <div class="map-toolbar">
-                <div class="map-chip map-status">
-                    <span class="status-dot is-ok"></span>
-                    <span>API <code>mio-backend-mora</code></span>
-                </div>
-
                 <div class="map-actions">
                     <label class="map-select" title="Cambiar modo del mapa">
                         <i class="fa-solid fa-layer-group text-accent" aria-hidden="true"></i>
@@ -174,38 +151,58 @@
 
             <!-- Leaflet Canvas -->
             <div id="map" class="map-canvas"></div>
+        </section>
 
-            <!-- Map Footer: legend + sync status -->
-            <footer class="map-footer">
+        <!-- Dock: nearest stop + route selector (side panel on desktop, bottom sheet on mobile) -->
+        <aside id="dock" class="dock" data-sheet="peek" data-tab="nearest" aria-label="Paradas y rutas">
+            <button id="dockHandle" type="button" class="dock-handle" aria-expanded="false" aria-controls="dock" aria-label="Expandir panel">
+                <span class="dock-handle-bar"></span>
+            </button>
+
+            <div class="dock-tabs" role="tablist" aria-label="Secciones">
+                <button id="tabNearest" type="button" class="dock-tab is-active" role="tab" aria-selected="true" aria-controls="nearestPanel" data-dock-tab="nearest">
+                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>Cerca de mí
+                </button>
+                <button id="tabRoutes" type="button" class="dock-tab" role="tab" aria-selected="false" aria-controls="rutas_seleccionar" data-dock-tab="routes">
+                    <i class="fa-solid fa-route" aria-hidden="true"></i>Rutas
+                    <span id="selectedCount" class="count-pill">0 activas</span>
+                </button>
+            </div>
+
+            <!-- Nearest Stop Information -->
+            <section id="nearestPanel" class="dock-panel nearest-panel" role="tabpanel" aria-labelledby="tabNearest">
+                <div id="nearestStopContainer" class="nearest-body scroll-area">
+                    <div class="empty-state">
+                        <span class="empty-state-icon"><i class="fa-solid fa-location-crosshairs"></i></span>
+                        <p class="empty-state-title">Busca la parada más cercana</p>
+                        <p class="empty-state-text">Permite el acceso a tu ubicación para ver las próximas llegadas.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Route Selector -->
+            <section id="rutas_seleccionar" class="dock-panel routes-panel" role="tabpanel" aria-labelledby="tabRoutes" hidden>
+                <label class="route-search">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <span class="sr-only">Buscar ruta</span>
+                    <input id="routeSearch" type="search" placeholder="Buscar ruta, código o tipo" autocomplete="off">
+                </label>
+                <div class="route-results-summary">
+                    <span id="routesResultCount">0 de 0 rutas</span>
+                    <span>Toca para monitorear</span>
+                </div>
+
+                <div id="routesGrid" class="routes-grid scroll-area">
+                    <!-- Tarjetas generadas dinámicamente en app.js -->
+                </div>
+            </section>
+
+            <!-- Legend + sync status -->
+            <footer class="dock-foot">
                 <div id="mapLegend" class="map-legend"></div>
                 <div id="lastUpdated" class="map-updated">Esperando sincronización...</div>
             </footer>
-        </section>
-
-        <!-- Route Selector -->
-        <section id="rutas_seleccionar" class="card routes-card" aria-labelledby="routesTitle">
-            <div class="card-header">
-                <h2 id="routesTitle" class="card-title">
-                    <span class="card-icon"><i class="fa-solid fa-route"></i></span>
-                    Rutas activas
-                </h2>
-                <span id="selectedCount" class="count-pill">0 activas</span>
-            </div>
-
-            <label class="route-search">
-                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                <span class="sr-only">Buscar ruta</span>
-                <input id="routeSearch" type="search" placeholder="Buscar ruta, código o tipo" autocomplete="off">
-            </label>
-            <div class="route-results-summary">
-                <span id="routesResultCount">0 de 0 rutas</span>
-                <span>Toca para monitorear</span>
-            </div>
-
-            <div id="routesGrid" class="routes-grid scroll-area">
-                <!-- Tarjetas generadas dinámicamente en app.js -->
-            </div>
-        </section>
+        </aside>
 
     </main>
 

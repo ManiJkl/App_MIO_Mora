@@ -168,11 +168,74 @@ const MAP_MODES = {
 
 document.addEventListener('DOMContentLoaded', () => {
     initSettings();
+    initDock();
     initMap();
     document.getElementById('routeSearch').addEventListener('input', event => {
         routeSearchTerm = event.target.value.trim().toLowerCase();
         renderRouteCards();
     });
+
+    function initDock() {
+        const dock = document.getElementById('dock');
+        const handle = document.getElementById('dockHandle');
+        if (!dock || !handle) {
+            return;
+        }
+
+        const setSheet = state => {
+            dock.dataset.sheet = state;
+            handle.setAttribute('aria-expanded', String(state === 'open'));
+            handle.setAttribute('aria-label', state === 'open' ? 'Contraer panel' : 'Expandir panel');
+        };
+
+        const setTab = (tab, { expand = false } = {}) => {
+            dock.dataset.tab = tab;
+            dock.querySelectorAll('[data-dock-tab]').forEach(button => {
+                const isActive = button.dataset.dockTab === tab;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+            document.getElementById('nearestPanel').hidden = tab !== 'nearest';
+            document.getElementById('rutas_seleccionar').hidden = tab !== 'routes';
+            if (expand) {
+                setSheet('open');
+            }
+        };
+
+        dock.querySelectorAll('[data-dock-tab]').forEach(button => {
+            button.addEventListener('click', () => {
+                const alreadyActive = dock.dataset.tab === button.dataset.dockTab;
+                // On mobile, tapping the active tab toggles the sheet; otherwise it opens it
+                if (alreadyActive && window.matchMedia('(max-width: 1023px)').matches) {
+                    setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open');
+                } else {
+                    setTab(button.dataset.dockTab, { expand: window.matchMedia('(max-width: 1023px)').matches });
+                }
+            });
+        });
+
+        handle.addEventListener('click', () => setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open'));
+
+        // "Seleccionar rutas" links inside the nearest-stop empty state
+        document.addEventListener('click', event => {
+            const link = event.target.closest('a[href="#rutas_seleccionar"]');
+            if (link) {
+                event.preventDefault();
+                setTab('routes', { expand: true });
+            }
+        });
+
+        // Keep Leaflet's bottom controls above the sheet on mobile
+        const syncDockHeight = () => {
+            const isSheet = window.matchMedia('(max-width: 1023px)').matches;
+            document.documentElement.style.setProperty('--dock-h', isSheet ? `${dock.offsetHeight}px` : '0px');
+        };
+        if (window.ResizeObserver) {
+            new ResizeObserver(syncDockHeight).observe(dock);
+        }
+        window.addEventListener('resize', syncDockHeight);
+        syncDockHeight();
+    }
 
     function initSettings() {
         const settingsButton = document.getElementById('settingsButton');
@@ -543,6 +606,7 @@ function updateTrafficButtonState() {
 
 function renderRouteCards() {
     const container = document.getElementById('routesGrid');
+    const previousScroll = container.scrollTop;
     container.innerHTML = '';
 
     const visibleRoutes = TARGET_ROUTES.filter(route => {
@@ -593,6 +657,7 @@ function renderRouteCards() {
         container.innerHTML = '<div class="route-empty-state">No se encontraron rutas con esa búsqueda.</div>';
     }
 
+    container.scrollTop = previousScroll;
     renderMapLegend();
 }
 
@@ -1096,7 +1161,7 @@ function createArrivalsList(arrivals, fallbackLine) {
         <div class="arrivals-list">
             ${arrivals.map(arrival => `
                 <div class="arrival-row">
-                    <span class="arrival-line"><i class="fa-solid fa-bus"></i>${arrival.nombreLinea || fallbackLine}</span>
+                    <span class="arrival-line"><span class="line-plate">${arrival.nombreLinea || fallbackLine}</span></span>
                     <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
                 </div>
             `).join('')}

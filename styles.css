@@ -5,7 +5,8 @@
    ========================================================================== */
 
 :root {
-    --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-sans: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
     --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 
     --radius-sm: 8px;
@@ -17,6 +18,7 @@
 
     --accent-d: #5aa9ff;
     --accent-l: #2563eb;
+    --dock-h: 0px;
 }
 
 [data-theme="amber"]  { --accent-d: #e8b964; --accent-l: #b45309; }
@@ -135,8 +137,8 @@ body {
     color: var(--text);
     background: var(--bg);
     font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 15px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 200ms ease;
@@ -221,7 +223,9 @@ code {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px var(--gutter);
+    padding: 10px var(--gutter);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
 }
 
 .brand {
@@ -245,7 +249,8 @@ code {
 }
 
 .brand-title {
-    font-size: 19px;
+    font-family: var(--font-display);
+    font-size: 21px;
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.15;
@@ -423,10 +428,8 @@ code {
     padding: 0;
     margin-bottom: 8px;
     color: var(--text-subtle);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 label.settings-field .settings-label {
@@ -524,90 +527,339 @@ select option {
 }
 
 /* ==========================================================================
-   LAYOUT
+   LAYOUT — full-bleed map, floating dock
    ========================================================================== */
 
 .app-main {
+    position: relative;
     flex: 1 1 auto;
     min-height: 0;
-    display: grid;
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    grid-template-areas:
-        "nearest map"
-        "routes  map";
-    gap: var(--gap);
-    padding: 0 var(--gutter) var(--gutter);
 }
 
-.nearest-card { grid-area: nearest; height: 300px; }
-.routes-card { grid-area: routes; }
-.map-shell { grid-area: map; }
+.map-shell {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: var(--surface-2);
+}
+
+.map-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
 
 /* ==========================================================================
-   CARDS
+   DOCK
    ========================================================================== */
 
-.card {
+.dock {
+    position: absolute;
+    z-index: 1000;
+    top: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: 396px;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 16px;
+    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
 }
 
-.card > * {
-    flex-shrink: 0;
+.dock-handle {
+    display: none;
 }
 
-.card > .scroll-area {
-    flex-shrink: 1;
+.dock-tabs {
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
 }
 
-.card-header {
+.dock-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 12px;
+    color: var(--text-subtle);
+    background: transparent;
+    border: 0;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    transition: color 160ms ease;
+}
+
+.dock-tab::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: -1px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    transform: scaleX(0);
+    transition: transform 200ms var(--ease);
+}
+
+.dock-tab:hover,
+.dock-tab.is-active {
+    color: var(--text);
+}
+
+.dock-tab.is-active::after {
+    transform: scaleX(1);
+}
+
+.dock-tab i {
+    font-size: 13px;
+}
+
+.dock-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 16px 8px;
+}
+
+.dock-foot {
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    min-height: 44px;
+    padding: 10px 16px;
+    color: var(--text-subtle);
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
 }
 
-.card-title {
-    display: flex;
+.count-pill {
+    padding: 1px 8px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   LINE PLATE — the route code, drawn like station signage
+   ========================================================================== */
+
+.line-plate,
+.route-chip,
+.route-code,
+.legend-item {
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    font-size: 14.5px;
+    justify-content: center;
+    min-width: 2.6em;
+    padding: 2px 8px;
+    color: #0b1017;
+    background: var(--route-color, var(--accent));
+    border-radius: 7px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.line-plate {
+    max-width: 150px;
+    overflow: hidden;
+    font-size: 15px;
+    text-overflow: ellipsis;
+}
+
+.route-chip {
+    flex: none;
+    font-size: 15px;
+}
+
+/* ==========================================================================
+   NEAREST STOP
+   ========================================================================== */
+
+.nearest-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-right: -8px;
+    padding-right: 8px;
+}
+
+.empty-state {
+    height: 100%;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 12px;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 6px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 50%;
+    font-size: 19px;
+}
+
+.empty-state-icon.is-warning {
+    color: var(--warning);
+    background: var(--warning-soft);
+}
+
+.empty-state-title {
+    font-family: var(--font-display);
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.01em;
 }
 
-.card-icon {
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-radius: var(--radius-sm);
-    font-size: 12.5px;
+.empty-state-text {
+    max-width: 270px;
+    color: var(--text-muted);
+    font-size: 13.5px;
 }
 
-.card-icon.is-success {
-    color: var(--success);
-    background: var(--success-soft);
-}
-
-.count-pill {
-    padding: 3px 10px;
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-radius: 999px;
-    font-size: 12px;
+.link-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 10px 16px;
+    color: var(--on-accent);
+    background: var(--accent);
+    border-radius: 12px;
+    font-size: 13.5px;
     font-weight: 700;
+    text-decoration: none;
+    transition: filter 160ms ease, transform 120ms var(--ease);
+}
+
+.link-button:hover {
+    filter: brightness(1.08);
+}
+
+.link-button:active {
+    transform: scale(0.97);
+}
+
+.nearest-stop {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.nearest-stop-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.nearest-stop-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.nearest-stop-name {
+    margin-top: 4px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+.nearest-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-subtle);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+.nearest-status[data-state="loading"] { color: var(--warning); }
+.nearest-status[data-state="ok"] { color: var(--success); }
+.nearest-status[data-state="error"] { color: var(--danger); }
+
+/* Arrivals read as a departures board: hairline rows, the first one large */
+.arrivals-list {
+    display: grid;
+}
+
+.arrival-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    border-top: 1px solid var(--border);
+}
+
+.arrival-line {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.arrival-time {
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     white-space: nowrap;
+}
+
+#nearestArrivals .arrival-row:first-child {
+    padding: 14px 0;
+}
+
+#nearestArrivals .arrival-row:first-child .arrival-time {
+    color: var(--success);
+    font-size: 34px;
+    line-height: 1;
+}
+
+#nearestArrivals .arrival-row:first-child .line-plate {
+    font-size: 18px;
+}
+
+.arrivals-empty {
+    padding: 4px 0;
+    color: var(--text-subtle);
+    font-size: 13px;
 }
 
 /* ==========================================================================
@@ -615,15 +867,16 @@ select option {
    ========================================================================== */
 
 .route-search {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 40px;
-    padding: 0 12px;
+    height: 44px;
+    padding: 0 14px;
     color: var(--text-subtle);
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -640,7 +893,7 @@ select option {
     background: transparent;
     border: 0;
     outline: 0;
-    font-size: 13.5px;
+    font-size: 14.5px;
 }
 
 .route-search input::placeholder {
@@ -648,12 +901,13 @@ select option {
 }
 
 .route-results-summary {
+    flex: none;
     display: flex;
     justify-content: space-between;
     gap: 8px;
     margin: 10px 2px;
     color: var(--text-subtle);
-    font-size: 12px;
+    font-size: 12.5px;
 }
 
 .route-results-summary span:first-child {
@@ -665,11 +919,11 @@ select option {
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
     align-content: start;
     gap: 8px;
     margin-right: -8px;
-    padding: 2px 8px 2px 0;
+    padding: 2px 8px 8px 0;
 }
 
 .route-card {
@@ -678,11 +932,11 @@ select option {
     flex-direction: column;
     gap: 10px;
     min-width: 0;
-    padding: 11px 12px;
+    padding: 10px;
     color: var(--text);
     background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
     text-align: left;
     transition: background-color 160ms ease, border-color 160ms ease, transform 120ms var(--ease);
 }
@@ -693,12 +947,12 @@ select option {
 }
 
 .route-card:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
 }
 
 .route-card.is-selected {
-    background: color-mix(in srgb, var(--route-color) 12%, var(--surface-2));
-    border-color: color-mix(in srgb, var(--route-color) 65%, var(--border));
+    background: color-mix(in srgb, var(--route-color) 14%, var(--surface-2));
+    border-color: var(--route-color);
 }
 
 .route-card-top,
@@ -706,294 +960,82 @@ select option {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
+}
+
+.route-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
 }
 
 .route-code {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-}
-
-.route-code::before {
-    content: "";
-    width: 8px;
-    height: 8px;
-    background: var(--route-color);
-    border-radius: 50%;
+    font-size: 16px;
 }
 
 .route-check {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     display: grid;
     place-items: center;
     color: var(--text-subtle);
-    border: 1px solid var(--border-strong);
+    border: 1.5px solid var(--border-strong);
     border-radius: 50%;
     font-size: 9px;
     transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
 .route-card.is-selected .route-check {
-    color: var(--on-accent);
-    background: var(--accent);
-    border-color: var(--accent);
-}
-
-.route-card-meta {
-    color: var(--text-subtle);
-    font-size: 11.5px;
+    color: #0b1017;
+    background: var(--route-color);
+    border-color: var(--route-color);
 }
 
 .route-type {
+    display: block;
+    max-width: 100%;
     overflow: hidden;
-    font-size: 10.5px;
+    color: var(--text-muted);
+    font-size: 12.5px;
     font-weight: 600;
-    letter-spacing: 0.05em;
     text-overflow: ellipsis;
+    text-transform: lowercase;
     white-space: nowrap;
 }
 
+.route-type::first-letter {
+    text-transform: uppercase;
+}
+
 .route-buses {
-    font-weight: 600;
+    color: var(--text-subtle);
+    font-size: 12px;
+    font-weight: 500;
     white-space: nowrap;
 }
 
 .route-buses.has-buses {
     color: var(--success);
+    font-weight: 700;
 }
 
 .route-empty-state {
     grid-column: 1 / -1;
     padding: 28px 12px;
     color: var(--text-subtle);
-    font-size: 13px;
-    text-align: center;
-}
-
-/* ==========================================================================
-   NEAREST STOP
-   ========================================================================== */
-
-.nearest-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    margin-right: -8px;
-    padding-right: 8px;
-}
-
-.empty-state {
-    height: 100%;
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 16px 12px;
-    text-align: center;
-}
-
-.empty-state-icon {
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    margin-bottom: 4px;
-    color: var(--success);
-    background: var(--success-soft);
-    border-radius: 14px;
-    font-size: 18px;
-}
-
-.empty-state-icon.is-warning {
-    color: var(--warning);
-    background: var(--warning-soft);
-}
-
-.empty-state-title {
     font-size: 13.5px;
-    font-weight: 650;
-}
-
-.empty-state-text {
-    max-width: 260px;
-    color: var(--text-subtle);
-    font-size: 12.5px;
-}
-
-.link-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 8px 14px;
-    color: var(--on-accent);
-    background: var(--accent);
-    border-radius: 10px;
-    font-size: 12.5px;
-    font-weight: 650;
-    text-decoration: none;
-    transition: filter 160ms ease, transform 120ms var(--ease);
-}
-
-.link-button:hover {
-    filter: brightness(1.08);
-}
-
-.link-button:active {
-    transform: scale(0.97);
-}
-
-.nearest-stop {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.nearest-stop-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.nearest-stop-meta {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--success);
-    font-size: 12px;
-    font-weight: 650;
-}
-
-.nearest-stop-name {
-    margin-top: 4px;
-    font-size: 16px;
-    font-weight: 750;
-    letter-spacing: -0.02em;
-    line-height: 1.25;
-}
-
-.route-chip {
-    --route-color: var(--accent);
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 9px;
-    color: var(--text);
-    background: color-mix(in srgb, var(--route-color) 16%, transparent);
-    border: 1px solid color-mix(in srgb, var(--route-color) 45%, transparent);
-    border-radius: 999px;
-    font-size: 11.5px;
-    font-weight: 750;
-    white-space: nowrap;
-}
-
-.route-chip::before {
-    content: "";
-    width: 7px;
-    height: 7px;
-    background: var(--route-color);
-    border-radius: 50%;
-}
-
-.nearest-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-subtle);
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.nearest-status[data-state="loading"] { color: var(--warning); }
-.nearest-status[data-state="ok"] { color: var(--success); }
-.nearest-status[data-state="error"] { color: var(--danger); }
-
-.arrivals-list {
-    display: grid;
-    gap: 6px;
-}
-
-.arrival-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 9px 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-}
-
-.arrival-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    font-size: 13px;
-    font-weight: 650;
-}
-
-.arrival-line i {
-    color: var(--text-subtle);
-    font-size: 11px;
-}
-
-.arrival-time {
-    color: var(--success);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 750;
-    white-space: nowrap;
-}
-
-.arrivals-empty {
-    padding: 4px 0;
-    color: var(--text-subtle);
-    font-size: 12.5px;
+    text-align: center;
 }
 
 /* ==========================================================================
-   MAP
+   MAP CONTROLS
    ========================================================================== */
-
-.map-shell {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-}
-
-.map-canvas {
-    position: relative;
-    z-index: 1;
-    flex: 1 1 auto;
-    min-height: 0;
-}
 
 .map-toolbar {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    right: 12px;
+    top: 16px;
+    right: 16px;
     z-index: 1000;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
     pointer-events: none;
 }
 
@@ -1005,39 +1047,27 @@ select option {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 6px;
-    margin-left: auto;
+    gap: 8px;
 }
 
-.map-chip,
 .map-button,
 .map-select {
-    height: 36px;
+    position: relative;
+    height: 42px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 0 12px;
+    padding: 0 14px;
     color: var(--text);
     background: var(--glass);
     border: 1px solid var(--glass-border);
-    border-radius: 10px;
+    border-radius: 12px;
     box-shadow: var(--shadow);
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
     backdrop-filter: blur(14px) saturate(1.4);
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 600;
     white-space: nowrap;
-}
-
-.map-chip {
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.map-chip code {
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 600;
 }
 
 .map-button {
@@ -1077,7 +1107,7 @@ select option {
 }
 
 .map-select {
-    padding-right: 10px;
+    padding-right: 12px;
     cursor: pointer;
 }
 
@@ -1092,7 +1122,7 @@ select option {
     background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%238595a8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center / 11px;
     border: 0;
     outline: 0;
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 600;
     cursor: pointer;
 }
@@ -1102,24 +1132,10 @@ select option {
     outline-offset: 2px;
 }
 
-.map-footer {
-    flex: none;
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    color: var(--text-subtle);
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-}
-
 .map-legend {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 6px;
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
@@ -1130,25 +1146,15 @@ select option {
 }
 
 .legend-item {
-    --route-color: var(--accent);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-muted);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.legend-item::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    background: var(--route-color);
-    border-radius: 50%;
+    min-width: 0;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 12px;
 }
 
 .map-updated {
-    min-width: 0;
+    flex: none;
+    max-width: 52%;
     overflow: hidden;
     text-align: right;
     text-overflow: ellipsis;
@@ -1167,15 +1173,15 @@ select option {
 .leaflet-bar {
     overflow: hidden;
     border: 1px solid var(--glass-border) !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
     box-shadow: var(--shadow) !important;
 }
 
 .leaflet-bar a,
 .leaflet-bar a:hover {
-    width: 34px;
-    height: 34px;
-    line-height: 34px;
+    width: 38px;
+    height: 38px;
+    line-height: 38px;
     color: var(--text);
     background: var(--glass);
     border-bottom-color: var(--border);
@@ -1207,7 +1213,7 @@ select option {
     color: var(--text);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
     box-shadow: var(--shadow-lg);
 }
 
@@ -1218,7 +1224,7 @@ select option {
 
 .leaflet-popup-content {
     margin: 14px 16px;
-    font-size: 13px;
+    font-size: 13.5px;
     line-height: 1.4;
 }
 
@@ -1233,7 +1239,7 @@ select option {
 }
 
 .popup {
-    min-width: 230px;
+    min-width: 240px;
     display: grid;
     gap: 10px;
 }
@@ -1247,9 +1253,11 @@ select option {
 }
 
 .popup-title {
-    font-size: 14px;
-    font-weight: 750;
-    line-height: 1.3;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
 }
 
 .popup-text,
@@ -1258,14 +1266,22 @@ select option {
     align-items: center;
     gap: 6px;
     color: var(--text-muted);
-    font-size: 12.5px;
+    font-size: 13px;
 }
 
 .popup-message.is-warning { color: var(--warning); }
 .popup-message.is-danger { color: var(--danger); }
 
 .popup .arrival-row {
-    padding: 7px 10px;
+    padding: 8px 0;
+}
+
+.popup .arrival-time {
+    font-size: 16px;
+}
+
+.popup .line-plate {
+    font-size: 13px;
 }
 
 .popup-status {
@@ -1274,7 +1290,7 @@ select option {
     color: var(--success);
     background: var(--success-soft);
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
 }
 
@@ -1302,8 +1318,8 @@ select option {
 .bus-marker {
     --route-color: var(--accent);
     position: relative;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     display: grid;
     place-items: center;
 }
@@ -1318,15 +1334,15 @@ select option {
 
 .bus-marker-icon {
     position: relative;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     display: grid;
     place-items: center;
-    color: #ffffff;
+    color: #0b1017;
     background: var(--route-color);
-    border: 2px solid #ffffff;
-    border-radius: 9px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+    border: 2.5px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
     font-size: 12px;
 }
 
@@ -1334,20 +1350,23 @@ select option {
     position: absolute;
     top: calc(100% + 3px);
     left: 50%;
-    padding: 1px 5px;
-    color: #ffffff;
-    background: rgb(12 17 24 / 0.9);
-    border-radius: 5px;
-    font-size: 9.5px;
+    padding: 1px 6px;
+    color: #0b1017;
+    background: var(--route-color);
+    border: 1.5px solid #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+    font-family: var(--font-display);
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     transform: translateX(-50%);
 }
 
 @keyframes busPulse {
     0%, 100% { transform: scale(1); opacity: 0.4; }
-    50% { transform: scale(1.45); opacity: 0.1; }
+    50% { transform: scale(1.5); opacity: 0.1; }
 }
 
 .user-location-dot {
@@ -1362,61 +1381,59 @@ select option {
 }
 
 /* ==========================================================================
-   RESPONSIVE
+   RESPONSIVE — the dock becomes a bottom sheet
    ========================================================================== */
 
 @media (max-width: 1023px) {
-    html,
-    body {
-        height: auto;
-        min-height: 100%;
+    .dock {
+        top: auto;
+        left: 8px;
+        right: 8px;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        width: auto;
+        border-radius: 22px 22px 18px 18px;
+        transition: height 260ms var(--ease);
     }
 
-    body {
-        overflow-x: hidden;
-        overflow-y: auto;
+    .dock-handle {
+        flex: none;
+        display: grid;
+        place-items: center;
+        height: 26px;
+        padding: 0;
+        background: transparent;
+        border: 0;
     }
 
-    .app-header {
-        position: sticky;
-        top: 0;
-        background: color-mix(in srgb, var(--bg) 85%, transparent);
-        -webkit-backdrop-filter: blur(14px);
-        backdrop-filter: blur(14px);
+    .dock-handle-bar {
+        width: 38px;
+        height: 4px;
+        background: var(--border-strong);
+        border-radius: 4px;
     }
 
-    .app-main {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: none;
-        grid-template-areas:
-            "nearest"
-            "map"
-            "routes";
+    .dock-tab {
+        min-height: 46px;
     }
 
-    .nearest-card {
-        max-height: none;
-        height: auto;
+    .dock[data-sheet="peek"] .dock-panel {
+        max-height: 204px;
     }
 
-    .nearest-body {
-        max-height: 340px;
-        flex:none;
-        height: 240px;
+    .dock[data-sheet="open"] {
+        height: min(72dvh, 680px);
     }
 
-    .map-shell {
-        height: 62vh;
-        height: 62dvh;
-        min-height: 400px;
+    .dock[data-sheet="peek"] .dock-foot {
+        display: none;
     }
 
-    .routes-grid {
-        max-height: 60vh;
+    .leaflet-bottom {
+        bottom: calc(var(--dock-h, 0px) + 8px);
     }
 
-    #rutas_seleccionar {
-        scroll-margin-top: 80px;
+    .leaflet-control-zoom {
+        display: none;
     }
 }
 
@@ -1426,16 +1443,16 @@ select option {
     }
 
     .brand-logo {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
     }
 
     .brand-title {
-        font-size: 17px;
+        font-size: 18px;
     }
 
     .brand-subtitle {
-        font-size: 11.5px;
+        display: none;
     }
 
     .status-badge {
@@ -1448,25 +1465,13 @@ select option {
         display: none;
     }
 
-    .app-main {
-        padding: 0 12px 12px;
-        gap: 12px;
-    }
-
-    .card {
-        padding: 14px;
-    }
-
-    .map-shell {
-        min-height: 420px;
-    }
-
-    .map-status {
-        display: none;
+    .map-toolbar {
+        top: 10px;
+        right: 10px;
     }
 
     .map-button {
-        width: 36px;
+        width: 42px;
         justify-content: center;
         padding: 0;
     }
@@ -1475,14 +1480,18 @@ select option {
         display: none;
     }
 
-    .map-footer {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
+    .map-select {
+        width: 42px;
+        justify-content: center;
+        padding: 0;
     }
 
-    .map-updated {
-        text-align: left;
+    .map-select select {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        padding: 0;
+        opacity: 0;
     }
 
     .route-search input {
