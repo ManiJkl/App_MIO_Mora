@@ -41,8 +41,6 @@ compilación ni instalar dependencias.
 - Tres modos: satélite, calles y terreno.
 - Botón **Centrar** para volver a la vista general de Cali.
 - Capa opcional de **tráfico en vivo** de TomTom, limitada al área de Cali.
-- Animaciones de las paradas que se pueden desactivar para ahorrar batería y
-  recursos.
 
 ### Interfaz
 - 12 colores de interfaz: azul, ámbar, turquesa, violeta, rosa, lima, índigo,
@@ -52,7 +50,7 @@ compilación ni instalar dependencias.
   en móvil.
 - Indicador de estado de conexión (conectando, en línea, despertando servidor,
   servidor caído) y hora de la última actualización.
-- Persistencia local de rutas seleccionadas, color, apariencia y animaciones.
+- Persistencia local de rutas seleccionadas, color y apariencia.
 
 ## Cómo funciona
 
@@ -83,7 +81,7 @@ compilación ni instalar dependencias.
    (`/api/llegadas/{parada}`) y se muestran ordenadas por minutos restantes.
    Las respuestas obsoletas se descartan si la parada más cercana cambia
    mientras se consulta.
-7. **Preferencias.** Tema, apariencia, animaciones y rutas se guardan en
+7. **Preferencias.** Tema, apariencia y rutas se guardan en
    `localStorage`.
 
 ## Cómo usarla
@@ -96,8 +94,7 @@ compilación ni instalar dependencias.
 4. Cambia el modo del mapa con el selector de capas, o usa **Centrar** para
    volver a Cali.
 5. Pulsa **Tráfico** para activar o desactivar la capa de tráfico.
-6. Abre **Configuración** (engranaje) para cambiar el color, la apariencia o
-   las animaciones del mapa.
+6. Abre **Configuración** (engranaje) para cambiar el color o la apariencia.
 
 ## Ejecución local
 
@@ -140,7 +137,7 @@ Las constantes principales están al inicio de `app.js`:
 | --- | --- |
 | `index.html` | Estructura de la interfaz y carga de recursos externos. |
 | `styles.css` | Estilos, temas de color, modo claro/oscuro y diseño responsivo. |
-| `app.js` | Estado, mapa, rutas, paradas, GPS, animaciones y consumo de la API. |
+| `app.js` | Estado, mapa, rutas, paradas, GPS y consumo de la API. |
 | `icon.png` | Logo y favicon. |
 
 ## Backend
