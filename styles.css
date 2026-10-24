@@ -433,6 +433,19 @@ label.settings-field .settings-label {
     margin-bottom: 0;
 }
 
+label.settings-toggle {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    cursor: pointer;
+}
+
+.settings-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent, currentColor);
+    cursor: pointer;
+}
+
 .theme-options {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

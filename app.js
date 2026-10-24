@@ -9,6 +9,7 @@ const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas
 const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 const THEME_STORAGE_KEY = 'mio-tracker-theme';
 const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
+const ANIMATIONS_STORAGE_KEY = 'mio-tracker-animations';
 const TOMTOM_API_KEY = 'gMnPtcEnZf43HD4ce4MNriH7UIwnROU8';
 const CALI_TRAFFIC_BOUNDS = [
     [3.25, -76.65],
@@ -106,6 +107,18 @@ let stopHaloRenderer = null;
 let stopHalos = {};
 let stopPulseTargets = {};
 let stopAnimationFrame = null;
+let lastStopPulseTime = 0;
+const stopAnimatingLayers = new Set();
+const STOP_PULSE_INTERVAL_MS = 33;
+let animationsEnabled = readAnimationsPreference();
+
+function readAnimationsPreference() {
+    try {
+        return localStorage.getItem(ANIMATIONS_STORAGE_KEY) !== 'false';
+    } catch (error) {
+        return true;
+    }
+}
 let stopDataByRoute = {};
 const failedStopRoutes = new Set();
 let stopLayersByRoute = {};
@@ -196,6 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
+
+        const animationsToggle = document.getElementById('animationsToggle');
+        if (animationsToggle) {
+            animationsToggle.checked = animationsEnabled;
+            animationsToggle.addEventListener('change', event => setAnimationsEnabled(event.target.checked));
+        }
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             applyAppearance(document.documentElement.dataset.appearance);
         });
@@ -905,12 +924,13 @@ function refreshStopMarkerStyles() {
 
     const nearest = findNearestStop();
     const center = map.getCenter();
+    const bounds = map.getBounds();
 
     // La parada más cercana al centro de la pantalla es la que se agranda
     let focusedLayer = null;
     let focusedDistance = Infinity;
     allLayers.forEach(layer => {
-        if (!map.getBounds().contains(layer.getLatLng())) {
+        if (!bounds.contains(layer.getLatLng())) {
             return;
         }
         const distance = center.distanceTo(layer.getLatLng());
@@ -927,22 +947,31 @@ function refreshStopMarkerStyles() {
             && layer.routeMeta.id === nearest.route.id;
         const isFocused = layer === focusedLayer;
 
+        // Solo se toca la capa cuando su rol cambia; evita redibujar todo el canvas en cada movimiento
         if (isNearest) {
             nearestLayer = layer;
-            layer.targetRadius = isFocused ? STOP_RADIUS_NEAREST + 3 : STOP_RADIUS_NEAREST;
-            layer.setStyle({
-                color: '#111827',
-                weight: 4,
-                fillColor: '#ffffff'
-            });
-            layer.bringToFront();
-        } else {
-            layer.targetRadius = isFocused ? STOP_RADIUS_FOCUSED : STOP_RADIUS;
-            layer.setStyle({
-                color: '#ffffff',
-                weight: 2,
-                fillColor: layer.routeMeta.color
-            });
+        }
+        const role = isNearest ? 'nearest' : 'normal';
+        if (layer.stopRole !== role) {
+            layer.stopRole = role;
+            layer.setStyle(isNearest
+                ? { color: '#111827', weight: 4, fillColor: '#ffffff' }
+                : { color: '#ffffff', weight: 2, fillColor: layer.routeMeta.color });
+            if (isNearest) {
+                layer.bringToFront();
+            }
+        }
+
+        const targetRadius = isNearest
+            ? (isFocused ? STOP_RADIUS_NEAREST + 3 : STOP_RADIUS_NEAREST)
+            : (isFocused ? STOP_RADIUS_FOCUSED : STOP_RADIUS);
+        if (layer.targetRadius !== targetRadius) {
+            layer.targetRadius = targetRadius;
+            if (animationsEnabled) {
+                stopAnimatingLayers.add(layer);
+            } else {
+                layer.setRadius(targetRadius);
+            }
         }
     });
 
@@ -980,39 +1009,46 @@ function getStopHalo(key) {
 
 function animateStopMarkers(now) {
     stopAnimationFrame = null;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const animate = animationsEnabled && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let keepRunning = false;
 
-    // Crecimiento suave del radio hacia el tamaño objetivo
-    Object.values(stopLayersByRoute).flat().forEach(layer => {
+    // Crecimiento suave del radio, solo de las capas que cambiaron de tamaño
+    stopAnimatingLayers.forEach(layer => {
         const target = layer.targetRadius;
-        if (target === undefined) {
-            return;
-        }
         const current = layer.getRadius();
-        if (reduceMotion || Math.abs(target - current) < 0.05) {
-            if (current !== target) {
-                layer.setRadius(target);
-            }
+        if (!animate || Math.abs(target - current) < 0.05) {
+            layer.setRadius(target);
+            stopAnimatingLayers.delete(layer);
             return;
         }
         layer.setRadius(current + (target - current) * 0.2);
         keepRunning = true;
     });
 
-    // Halo pulsante: rojo/oscuro para la más cercana al usuario, color de ruta para la enfocada
+    // Halo pulsante: rojo para la más cercana al usuario, color de ruta para la enfocada.
+    // Se redibuja a ~30 FPS, suficiente para un pulso y la mitad de costoso que 60.
+    const pulseDue = now - lastStopPulseTime >= STOP_PULSE_INTERVAL_MS;
+    if (pulseDue) {
+        lastStopPulseTime = now;
+    }
     const pulse = (now % 1500) / 1500;
+
     ['nearest', 'focused'].forEach(key => {
         const layer = stopPulseTargets[key];
-        const halo = stopHalos[key] || (layer && getStopHalo(key));
+        const halo = stopHalos[key] || (layer && animate && getStopHalo(key));
 
         if (!halo) {
             return;
         }
-        if (!layer || reduceMotion) {
+        if (!layer || !animate) {
             if (map.hasLayer(halo)) {
                 map.removeLayer(halo);
             }
+            return;
+        }
+
+        keepRunning = true;
+        if (!pulseDue && map.hasLayer(halo)) {
             return;
         }
 
@@ -1025,12 +1061,22 @@ function animateStopMarkers(now) {
             color: key === 'nearest' ? '#ef4444' : layer.routeMeta.color,
             opacity: (1 - pulse) * 0.8
         });
-        keepRunning = true;
     });
 
     if (keepRunning) {
         stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
     }
+}
+
+function setAnimationsEnabled(enabled) {
+    animationsEnabled = enabled;
+    try {
+        localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(enabled));
+    } catch (error) {
+        console.warn('No se pudo guardar la preferencia de animaciones:', error);
+    }
+    refreshStopMarkerStyles();
+    startStopAnimation();
 }
 
 function createStopPopupContent(stop, routeMeta, message = '<div class="popup-message">Haz clic en la parada para consultar llegadas.</div>') {
