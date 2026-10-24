@@ -10,6 +10,7 @@ const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 const THEME_STORAGE_KEY = 'mio-tracker-theme';
 const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
 const ANIMATIONS_STORAGE_KEY = 'mio-tracker-animations';
+const GLASS_STORAGE_KEY = 'mio-tracker-glass';
 const TOMTOM_API_KEY = 'gMnPtcEnZf43HD4ce4MNriH7UIwnROU8';
 const CALI_TRAFFIC_BOUNDS = [
     [3.25, -76.65],
@@ -385,6 +386,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (animationsToggle) {
             animationsToggle.checked = animationsEnabled;
             animationsToggle.addEventListener('change', event => setAnimationsEnabled(event.target.checked));
+        }
+
+        const glassToggle = document.getElementById('glassToggle');
+        if (glassToggle) {
+            glassToggle.checked = document.documentElement.dataset.glass !== 'off';
+            glassToggle.addEventListener('change', event => setGlassEnabled(event.target.checked));
         }
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             applyAppearance(document.documentElement.dataset.appearance);
@@ -1239,6 +1246,15 @@ function animateStopMarkers(now) {
 
     if (keepRunning) {
         stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
+    }
+}
+
+function setGlassEnabled(enabled) {
+    document.documentElement.dataset.glass = enabled ? 'on' : 'off';
+    try {
+        localStorage.setItem(GLASS_STORAGE_KEY, String(enabled));
+    } catch (error) {
+        console.warn('No se pudo guardar la preferencia de liquid glass:', error);
     }
 }
 
