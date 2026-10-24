@@ -10,6 +10,7 @@ const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 const THEME_STORAGE_KEY = 'mio-tracker-theme';
 const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
 const ANIMATIONS_STORAGE_KEY = 'mio-tracker-animations';
+const GLASS_STORAGE_KEY = 'mio-tracker-glass';
 const TOMTOM_API_KEY = 'gMnPtcEnZf43HD4ce4MNriH7UIwnROU8';
 const CALI_TRAFFIC_BOUNDS = [
     [3.25, -76.65],
@@ -72,6 +73,18 @@ const ROUTE_TYPE_LABELS = {
     A: 'ALIMENTADOR',
     AL: 'ALIMENTADOR'
 };
+
+// Picks white or dark text, whichever has the higher WCAG contrast against a route's hex color
+function routeInk(hex) {
+    const channels = hex.replace('#', '').match(/../g).map(part => {
+        const value = parseInt(part, 16) / 255;
+        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    const contrastWithWhite = 1.05 / (luminance + 0.05);
+    const contrastWithDark = (luminance + 0.05) / 0.055;
+    return contrastWithWhite >= contrastWithDark ? '#ffffff' : '#0b1017';
+}
 
 const TARGET_ROUTES = ALL_ROUTE_CODES.map((routeId, index) => {
     const featuredRoute = FEATURED_ROUTES.find(route => route.id === routeId);
@@ -182,13 +195,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const mobileQuery = window.matchMedia('(max-width: 1023px)');
+        const tabsBar = dock.querySelector('.dock-tabs');
+
+        // Sheet heights in px (mobile only): peek shows the tabs + a short panel, open is ~72% of the viewport
+        const peekHeight = () => handle.offsetHeight + tabsBar.offsetHeight + 204 + 2;
+        const openHeight = () => Math.min(window.innerHeight * 0.72, 680);
+
+        const applyHeight = state => {
+            dock.style.height = mobileQuery.matches
+                ? `${state === 'open' ? openHeight() : peekHeight()}px`
+                : '';
+        };
+
         const setSheet = state => {
             dock.dataset.sheet = state;
             handle.setAttribute('aria-expanded', String(state === 'open'));
             handle.setAttribute('aria-label', state === 'open' ? 'Contraer panel' : 'Expandir panel');
+            applyHeight(state);
         };
 
         const setTab = (tab, { expand = false } = {}) => {
+            if (tab !== dock.dataset.tab) {
+                dock.dataset.dir = tab === 'routes' ? 'forward' : 'back';
+            }
             dock.dataset.tab = tab;
             dock.querySelectorAll('[data-dock-tab]').forEach(button => {
                 const isActive = button.dataset.dockTab === tab;
@@ -214,7 +244,85 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Drag the handle (or the tab strip) to resize the sheet; a plain tap on the handle slides it open/closed
+        let drag = null;
+        let suppressClick = false;
+
+        const onDragStart = event => {
+            if (!mobileQuery.matches || (event.pointerType === 'mouse' && event.button !== 0)) {
+                return;
+            }
+            drag = {
+                id: event.pointerId,
+                target: event.currentTarget,
+                startY: event.clientY,
+                startH: dock.offsetHeight,
+                lastY: event.clientY,
+                lastT: event.timeStamp,
+                velocity: 0,
+                moved: false
+            };
+        };
+
+        const onDragMove = event => {
+            if (!drag || event.pointerId !== drag.id) {
+                return;
+            }
+            const dy = event.clientY - drag.startY;
+            if (!drag.moved) {
+                if (Math.abs(dy) < 6) {
+                    return;
+                }
+                drag.moved = true;
+                drag.target.setPointerCapture(drag.id);
+                dock.classList.add('is-dragging');
+            }
+            const dt = event.timeStamp - drag.lastT;
+            if (dt > 0) {
+                drag.velocity = (event.clientY - drag.lastY) / dt;
+            }
+            drag.lastY = event.clientY;
+            drag.lastT = event.timeStamp;
+            const min = peekHeight();
+            const max = openHeight();
+            dock.style.height = `${Math.max(min, Math.min(max, drag.startH - dy))}px`;
+        };
+
+        const onDragEnd = event => {
+            if (!drag || event.pointerId !== drag.id) {
+                return;
+            }
+            const { moved, velocity } = drag;
+            drag = null;
+            if (!moved) {
+                return;
+            }
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 0);
+            dock.classList.remove('is-dragging');
+            const mid = (peekHeight() + openHeight()) / 2;
+            // A quick flick wins over position; otherwise snap to the nearest state
+            const goOpen = Math.abs(velocity) > 0.4 ? velocity < 0 : dock.offsetHeight > mid;
+            setSheet(goOpen ? 'open' : 'peek');
+        };
+
+        [handle, tabsBar].forEach(el => {
+            el.addEventListener('pointerdown', onDragStart);
+            el.addEventListener('pointermove', onDragMove);
+            el.addEventListener('pointerup', onDragEnd);
+            el.addEventListener('pointercancel', onDragEnd);
+        });
+        // Swallow the click that follows a drag so it doesn't also toggle the sheet or switch tabs
+        dock.addEventListener('click', event => {
+            if (suppressClick) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        }, true);
+
         handle.addEventListener('click', () => setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open'));
+        mobileQuery.addEventListener('change', () => applyHeight(dock.dataset.sheet));
+        window.addEventListener('resize', () => applyHeight(dock.dataset.sheet));
 
         // "Seleccionar rutas" links inside the nearest-stop empty state
         document.addEventListener('click', event => {
@@ -235,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.addEventListener('resize', syncDockHeight);
         syncDockHeight();
+        applyHeight(dock.dataset.sheet);
     }
 
     function initSettings() {
@@ -277,6 +386,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (animationsToggle) {
             animationsToggle.checked = animationsEnabled;
             animationsToggle.addEventListener('change', event => setAnimationsEnabled(event.target.checked));
+        }
+
+        const glassToggle = document.getElementById('glassToggle');
+        if (glassToggle) {
+            glassToggle.checked = document.documentElement.dataset.glass !== 'off';
+            glassToggle.addEventListener('change', event => setGlassEnabled(event.target.checked));
         }
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             applyAppearance(document.documentElement.dataset.appearance);
@@ -627,6 +742,7 @@ function renderRouteCards() {
         card.onclick = () => toggleRouteSelection(route.id);
         card.className = `route-card${isSelected ? ' is-selected' : ''}`;
         card.style.setProperty('--route-color', route.color);
+        card.style.setProperty('--route-ink', routeInk(route.color));
         card.setAttribute('aria-pressed', String(isSelected));
         card.title = route.name;
 
@@ -673,7 +789,7 @@ function renderMapLegend() {
 
     legend.innerHTML = routes.length > 0
         ? routes.map(route =>
-            `<span class="legend-item" style="--route-color: ${route.color}">${route.id}</span>`
+            `<span class="legend-item" style="--route-color: ${route.color}; --route-ink: ${routeInk(route.color)}">${route.id}</span>`
         ).join('')
         : '<span>Sin rutas en el mapa</span>';
 }
@@ -1133,6 +1249,15 @@ function animateStopMarkers(now) {
     }
 }
 
+function setGlassEnabled(enabled) {
+    document.documentElement.dataset.glass = enabled ? 'on' : 'off';
+    try {
+        localStorage.setItem(GLASS_STORAGE_KEY, String(enabled));
+    } catch (error) {
+        console.warn('No se pudo guardar la preferencia de liquid glass:', error);
+    }
+}
+
 function setAnimationsEnabled(enabled) {
     animationsEnabled = enabled;
     try {
@@ -1149,7 +1274,7 @@ function createStopPopupContent(stop, routeMeta, message = '<div class="popup-me
         <div class="popup">
             <div class="popup-heading">
                 <div class="popup-title">${stop.nombre}</div>
-                <span class="route-chip" style="--route-color: ${routeMeta.color}">${routeMeta.id}</span>
+                <span class="route-chip" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">${routeMeta.id}</span>
             </div>
             ${message}
         </div>
@@ -1295,7 +1420,7 @@ function updateNearestStopPanel() {
                         </div>
                         <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
                     </div>
-                    <span class="route-chip" style="--route-color: ${nearestStop.route.color}">
+                    <span class="route-chip" style="--route-color: ${nearestStop.route.color}; --route-ink: ${routeInk(nearestStop.route.color)}">
                         ${nearestStop.route.id}
                     </span>
                 </div>
@@ -1446,7 +1571,7 @@ function updateBusMarkers() {
 
 function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
     const iconHtml = `
-        <div class="bus-marker" style="--route-color: ${routeMeta.color}">
+        <div class="bus-marker" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">
             <span class="bus-marker-pulse"></span>
             <span class="bus-marker-icon"><i class="fa-solid fa-bus"></i></span>
             <span class="bus-marker-label">${routeMeta.id}</span>

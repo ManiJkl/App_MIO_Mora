@@ -78,7 +78,7 @@
 
     --text: #142030;
     --text-muted: #4f5e71;
-    --text-subtle: #7a8899;
+    --text-subtle: #5c6b7d;
 
     --success: #15803d;
     --warning: #b45309;
@@ -633,6 +633,30 @@ select option {
     padding: 16px 16px 8px;
 }
 
+.dock-panel:not([hidden]) {
+    animation: dock-panel-in 280ms var(--ease) both;
+}
+
+.dock[data-dir="back"] .dock-panel:not([hidden]) {
+    animation-name: dock-panel-in-back;
+}
+
+@keyframes dock-panel-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes dock-panel-in-back {
+    from { opacity: 0; transform: translateX(-24px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dock-panel:not([hidden]) {
+        animation: none;
+    }
+}
+
 .dock-foot {
     flex: none;
     display: flex;
@@ -670,7 +694,7 @@ select option {
     justify-content: center;
     min-width: 2.6em;
     padding: 2px 8px;
-    color: #0b1017;
+    color: var(--route-ink, var(--on-accent));
     background: var(--route-color, var(--accent));
     border-radius: 7px;
     font-family: var(--font-display);
@@ -986,7 +1010,7 @@ select option {
 }
 
 .route-card.is-selected .route-check {
-    color: #0b1017;
+    color: var(--route-ink, var(--on-accent));
     background: var(--route-color);
     border-color: var(--route-color);
 }
@@ -1308,6 +1332,164 @@ select option {
     border-top-color: var(--accent);
 }
 
+/* ==========================================================================
+   LIQUID GLASS — experimental dock look (delete this block to revert)
+   ========================================================================== */
+
+:root[data-glass="on"] .dock {
+    background:
+        linear-gradient(135deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.03) 45%, rgb(255 255 255 / 0.08)),
+        color-mix(in srgb, var(--surface) 38%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(180%) brightness(1.05);
+    backdrop-filter: blur(22px) saturate(180%) brightness(1.05);
+    border: 1px solid rgb(255 255 255 / 0.28);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.55),
+        inset 0 -1px 0 rgb(255 255 255 / 0.12),
+        inset 0 0 22px rgb(255 255 255 / 0.07),
+        var(--shadow-lg);
+}
+
+:root[data-glass="on"] .dock::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(120% 60% at 20% 0%, rgb(255 255 255 / 0.22), transparent 60%);
+}
+
+:root[data-glass="on"] .dock-tabs,
+:root[data-glass="on"] .dock-foot {
+    border-color: rgb(255 255 255 / 0.18);
+}
+
+/* Arrival rows stay hairline rows: no box, just a visible divider */
+:root[data-glass="on"] .dock .arrival-row {
+    background: none;
+    border-top-color: rgb(255 255 255 / 0.2);
+}
+
+:root[data-glass="on"] .dock .route-card,
+:root[data-glass="on"] .dock .route-search {
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    border-color: rgb(255 255 255 / 0.24);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+:root[data-glass="on"] .dock .route-card:hover {
+    background: color-mix(in srgb, var(--surface-3) 75%, transparent);
+}
+
+:root[data-glass="on"] .dock .route-card.is-selected {
+    background: color-mix(in srgb, var(--route-color) 28%, var(--surface) 55%);
+    border-color: var(--route-color);
+}
+
+/* Text on glass: brighter secondary tones and a faint shadow so it holds up over the map */
+:root[data-glass="on"] .dock {
+    --text-muted: #cfd9e5;
+    --text-subtle: #a9b8c9;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+:root[data-glass="on"] .dock .line-plate,
+:root[data-glass="on"] .dock .route-chip,
+:root[data-glass="on"] .dock .route-code,
+:root[data-glass="on"] .dock .count-pill,
+:root[data-glass="on"] .dock .route-check {
+    text-shadow: none;
+}
+
+:root[data-glass="on"] .dock .dock-handle-bar {
+    width: 44px;
+    height: 5px;
+    background: rgb(255 255 255 / 0.85);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .dock-handle-bar {
+    background: rgb(20 32 48 / 0.55);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.6);
+}
+
+:root[data-glass="on"] .dock .dock-tab {
+    color: var(--text-muted);
+}
+
+:root[data-glass="on"] .dock .dock-tab:hover,
+:root[data-glass="on"] .dock .dock-tab.is-active {
+    color: var(--text);
+}
+
+:root[data-glass="on"] .dock .route-search input {
+    color: var(--text);
+}
+
+:root[data-glass="on"] .dock .route-search input::placeholder {
+    color: var(--text-subtle);
+}
+
+:root[data-glass="on"] .dock .count-pill {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock {
+    background:
+        linear-gradient(135deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0.25) 50%, rgb(255 255 255 / 0.45)),
+        color-mix(in srgb, var(--surface) 30%, transparent);
+    border-color: rgb(255 255 255 / 0.7);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock {
+    --text-muted: #34455a;
+    --text-subtle: #4a5b70;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.5);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .route-card,
+:root[data-glass="on"][data-mode="light"] .dock .route-search {
+    background: rgb(255 255 255 / 0.72);
+    border-color: rgb(255 255 255 / 0.9);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.08), inset 0 1px 0 #fff;
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .route-card:hover {
+    background: rgb(255 255 255 / 0.9);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .route-card.is-selected {
+    background: color-mix(in srgb, var(--route-color) 20%, #ffffff 80%);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .arrival-row {
+    border-top-color: rgb(15 23 42 / 0.12);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .count-pill {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+:root[data-glass="on"][data-mode="light"] .dock .line-plate,
+:root[data-glass="on"][data-mode="light"] .dock .route-chip,
+:root[data-glass="on"][data-mode="light"] .dock .route-code,
+:root[data-glass="on"][data-mode="light"] .dock .count-pill,
+:root[data-glass="on"][data-mode="light"] .dock .route-check {
+    text-shadow: none;
+}
+
+/* Light mode: route codes (panel, route cards, legend, map markers) always use white text */
+:root[data-mode="light"] .line-plate,
+:root[data-mode="light"] .route-chip,
+:root[data-mode="light"] .route-code,
+:root[data-mode="light"] .legend-item,
+:root[data-mode="light"] .route-card.is-selected .route-check,
+:root[data-mode="light"] .bus-marker-icon,
+:root[data-mode="light"] .bus-marker-label {
+    color: #ffffff;
+}
+
 /* Map markers */
 .bus-marker-custom,
 .user-location-marker {
@@ -1338,7 +1520,7 @@ select option {
     height: 30px;
     display: grid;
     place-items: center;
-    color: #0b1017;
+    color: var(--route-ink, #0b1017);
     background: var(--route-color);
     border: 2.5px solid #ffffff;
     border-radius: 50%;
@@ -1351,7 +1533,7 @@ select option {
     top: calc(100% + 3px);
     left: 50%;
     padding: 1px 6px;
-    color: #0b1017;
+    color: var(--route-ink, #0b1017);
     background: var(--route-color);
     border: 1.5px solid #ffffff;
     border-radius: 6px;
@@ -1416,15 +1598,24 @@ select option {
         min-height: 46px;
     }
 
-    .dock[data-sheet="peek"] .dock-panel {
-        max-height: 204px;
+    /* Height is set in px by initDock() so it can animate and follow the finger */
+    .dock.is-dragging {
+        transition: none;
+        user-select: none;
     }
 
-    .dock[data-sheet="open"] {
-        height: min(72dvh, 680px);
+    .dock-handle,
+    .dock-tabs {
+        touch-action: none;
     }
 
-    .dock[data-sheet="peek"] .dock-foot {
+    .dock-handle {
+        height: 32px;
+        cursor: grab;
+    }
+
+    .dock[data-sheet="peek"] .dock-foot,
+    .dock.is-dragging .dock-foot {
         display: none;
     }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="blue" data-appearance="auto" data-mode="dark">
+<html lang="es" data-theme="blue" data-appearance="auto" data-mode="dark" data-glass="on">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -17,6 +17,7 @@
                 root.dataset.theme = localStorage.getItem('mio-tracker-theme') || 'blue';
                 root.dataset.appearance = appearance;
                 root.dataset.mode = appearance === 'auto' ? (prefersLight ? 'light' : 'dark') : appearance;
+                root.dataset.glass = localStorage.getItem('mio-tracker-glass') === 'false' ? 'off' : 'on';
             } catch (error) {
                 // Storage unavailable: keep defaults from the <html> attributes
             }
@@ -109,6 +110,10 @@
                     <label class="settings-field settings-toggle">
                         <span class="settings-label">Animaciones del mapa</span>
                         <input id="animationsToggle" type="checkbox" checked>
+                    </label>
+                    <label class="settings-field settings-toggle">
+                        <span class="settings-label">Efecto liquid glass</span>
+                        <input id="glassToggle" type="checkbox" checked>
                     </label>
                 </div>
             </div>
