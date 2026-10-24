@@ -1276,14 +1276,19 @@ function updateNearestStopPanel() {
         container.innerHTML = `
             <div data-nearest-stop-key="${stopKey}" class="nearest-stop">
                 <div class="nearest-stop-head">
-                    <span id="nearestArrivalsStatus" class="nearest-status" data-state="loading" role="status" aria-live="polite" title="Consultando llegadas..." aria-label="Consultando llegadas...">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
-                    </span>
-                    <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
-                    <span class="nearest-stop-meta"><span id="nearestStopDistance">${formatDistance(distance)}</span></span>
+                    <div class="nearest-stop-info">
+                        <div class="nearest-stop-meta">
+                            <i class="fa-solid fa-person-walking"></i>
+                            A <span id="nearestStopDistance">${formatDistance(distance)}</span>
+                        </div>
+                        <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
+                    </div>
                     <span class="route-chip" style="--route-color: ${nearestStop.route.color}; --route-ink: ${routeInk(nearestStop.route.color)}">
                         ${nearestStop.route.id}
                     </span>
+                </div>
+                <div id="nearestArrivalsStatus" class="nearest-status" data-state="loading" role="status" aria-live="polite" title="Consultando llegadas..." aria-label="Consultando llegadas...">
+                    <i class="fa-solid fa-spinner fa-spin"></i><span class="nearest-status-text">Consultando llegadas...</span>
                 </div>
                 <div id="nearestArrivals">
                     <div class="arrivals-empty">Esperando información de llegadas...</div>
@@ -1333,7 +1338,7 @@ function findNearestStop() {
 }
 
 function setArrivalsStatus(container, iconClasses, label) {
-    container.innerHTML = `<i class="fa-solid ${iconClasses}"></i>`;
+    container.innerHTML = `<i class="fa-solid ${iconClasses}"></i><span class="nearest-status-text">${label}</span>`;
     container.title = label;
     container.setAttribute('aria-label', label);
 }

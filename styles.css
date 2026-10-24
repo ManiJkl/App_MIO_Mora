@@ -800,25 +800,22 @@ select option {
 
 .nearest-stop-head {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .nearest-stop-meta {
-    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--text-muted);
     font-size: 13px;
     font-weight: 600;
-    white-space: nowrap;
 }
 
 .nearest-stop-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin-top: 4px;
     font-family: var(--font-display);
     font-size: 22px;
     font-weight: 800;
@@ -827,11 +824,12 @@ select option {
 }
 
 .nearest-status {
-    flex: none;
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    gap: 6px;
     color: var(--text-subtle);
-    font-size: 13px;
+    font-size: 12.5px;
+    font-weight: 500;
 }
 
 .nearest-status[data-state="loading"] { color: var(--warning); }
@@ -1605,16 +1603,44 @@ select option {
         padding: 8px 12px 4px;
     }
 
+    /* One compact line: status icon, stop name, distance, route */
     .nearest-stop {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        align-items: center;
         gap: 8px;
     }
 
+    .nearest-stop-head,
+    .nearest-stop-info {
+        display: contents;
+    }
+
+    .nearest-status { order: 1; }
+    .nearest-stop-name { order: 2; }
+    .nearest-stop-meta { order: 3; }
+    .nearest-stop-head > .route-chip { order: 4; }
+    #nearestArrivals {
+        order: 5;
+        grid-column: 1 / -1;
+    }
+
+    .nearest-status-text {
+        display: none;
+    }
+
     .nearest-stop-name {
+        margin-top: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         font-size: 15px;
     }
 
     .nearest-stop-meta {
+        gap: 4px;
         font-size: 12px;
+        white-space: nowrap;
     }
 
     .arrival-row {
