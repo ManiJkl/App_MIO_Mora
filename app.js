@@ -182,13 +182,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const mobileQuery = window.matchMedia('(max-width: 1023px)');
+        const tabsBar = dock.querySelector('.dock-tabs');
+
+        // Sheet heights in px (mobile only): peek shows the tabs + a short panel, open is ~72% of the viewport
+        const peekHeight = () => handle.offsetHeight + tabsBar.offsetHeight + 204 + 2;
+        const openHeight = () => Math.min(window.innerHeight * 0.72, 680);
+
+        const applyHeight = state => {
+            dock.style.height = mobileQuery.matches
+                ? `${state === 'open' ? openHeight() : peekHeight()}px`
+                : '';
+        };
+
         const setSheet = state => {
             dock.dataset.sheet = state;
             handle.setAttribute('aria-expanded', String(state === 'open'));
             handle.setAttribute('aria-label', state === 'open' ? 'Contraer panel' : 'Expandir panel');
+            applyHeight(state);
         };
 
         const setTab = (tab, { expand = false } = {}) => {
+            if (tab !== dock.dataset.tab) {
+                dock.dataset.dir = tab === 'routes' ? 'forward' : 'back';
+            }
             dock.dataset.tab = tab;
             dock.querySelectorAll('[data-dock-tab]').forEach(button => {
                 const isActive = button.dataset.dockTab === tab;
@@ -214,7 +231,85 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Drag the handle (or the tab strip) to resize the sheet; a plain tap on the handle slides it open/closed
+        let drag = null;
+        let suppressClick = false;
+
+        const onDragStart = event => {
+            if (!mobileQuery.matches || (event.pointerType === 'mouse' && event.button !== 0)) {
+                return;
+            }
+            drag = {
+                id: event.pointerId,
+                target: event.currentTarget,
+                startY: event.clientY,
+                startH: dock.offsetHeight,
+                lastY: event.clientY,
+                lastT: event.timeStamp,
+                velocity: 0,
+                moved: false
+            };
+        };
+
+        const onDragMove = event => {
+            if (!drag || event.pointerId !== drag.id) {
+                return;
+            }
+            const dy = event.clientY - drag.startY;
+            if (!drag.moved) {
+                if (Math.abs(dy) < 6) {
+                    return;
+                }
+                drag.moved = true;
+                drag.target.setPointerCapture(drag.id);
+                dock.classList.add('is-dragging');
+            }
+            const dt = event.timeStamp - drag.lastT;
+            if (dt > 0) {
+                drag.velocity = (event.clientY - drag.lastY) / dt;
+            }
+            drag.lastY = event.clientY;
+            drag.lastT = event.timeStamp;
+            const min = peekHeight();
+            const max = openHeight();
+            dock.style.height = `${Math.max(min, Math.min(max, drag.startH - dy))}px`;
+        };
+
+        const onDragEnd = event => {
+            if (!drag || event.pointerId !== drag.id) {
+                return;
+            }
+            const { moved, velocity } = drag;
+            drag = null;
+            if (!moved) {
+                return;
+            }
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 0);
+            dock.classList.remove('is-dragging');
+            const mid = (peekHeight() + openHeight()) / 2;
+            // A quick flick wins over position; otherwise snap to the nearest state
+            const goOpen = Math.abs(velocity) > 0.4 ? velocity < 0 : dock.offsetHeight > mid;
+            setSheet(goOpen ? 'open' : 'peek');
+        };
+
+        [handle, tabsBar].forEach(el => {
+            el.addEventListener('pointerdown', onDragStart);
+            el.addEventListener('pointermove', onDragMove);
+            el.addEventListener('pointerup', onDragEnd);
+            el.addEventListener('pointercancel', onDragEnd);
+        });
+        // Swallow the click that follows a drag so it doesn't also toggle the sheet or switch tabs
+        dock.addEventListener('click', event => {
+            if (suppressClick) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        }, true);
+
         handle.addEventListener('click', () => setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open'));
+        mobileQuery.addEventListener('change', () => applyHeight(dock.dataset.sheet));
+        window.addEventListener('resize', () => applyHeight(dock.dataset.sheet));
 
         // "Seleccionar rutas" links inside the nearest-stop empty state
         document.addEventListener('click', event => {
@@ -235,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.addEventListener('resize', syncDockHeight);
         syncDockHeight();
+        applyHeight(dock.dataset.sheet);
     }
 
     function initSettings() {
