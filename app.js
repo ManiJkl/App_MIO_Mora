@@ -9,6 +9,7 @@ const RENDER_ARRIVALS_BASE = 'https://mio-backend-mora.onrender.com/api/llegadas
 const SELECTED_ROUTES_STORAGE_KEY = 'mio-tracker-selected-routes';
 const THEME_STORAGE_KEY = 'mio-tracker-theme';
 const APPEARANCE_STORAGE_KEY = 'mio-tracker-appearance';
+const ANIMATIONS_STORAGE_KEY = 'mio-tracker-animations';
 const TOMTOM_API_KEY = 'gMnPtcEnZf43HD4ce4MNriH7UIwnROU8';
 const CALI_TRAFFIC_BOUNDS = [
     [3.25, -76.65],
@@ -98,7 +99,28 @@ let busDataByRoute = {};
 let mapMarkers = {};
 let routePointsByRoute = {};
 let routeLayers = {};
+const STOP_RADIUS = 7;
+const STOP_RADIUS_FOCUSED = 11;
+const STOP_RADIUS_NEAREST = 10;
+let stopRenderer = null;
+let stopHaloRenderer = null;
+let stopHalos = {};
+let stopPulseTargets = {};
+let stopAnimationFrame = null;
+let lastStopPulseTime = 0;
+const stopAnimatingLayers = new Set();
+const STOP_PULSE_INTERVAL_MS = 33;
+let animationsEnabled = readAnimationsPreference();
+
+function readAnimationsPreference() {
+    try {
+        return localStorage.getItem(ANIMATIONS_STORAGE_KEY) !== 'false';
+    } catch (error) {
+        return true;
+    }
+}
 let stopDataByRoute = {};
+const failedStopRoutes = new Set();
 let stopLayersByRoute = {};
 let map = null;
 let tileLayer = null;
@@ -146,11 +168,74 @@ const MAP_MODES = {
 
 document.addEventListener('DOMContentLoaded', () => {
     initSettings();
+    initDock();
     initMap();
     document.getElementById('routeSearch').addEventListener('input', event => {
         routeSearchTerm = event.target.value.trim().toLowerCase();
         renderRouteCards();
     });
+
+    function initDock() {
+        const dock = document.getElementById('dock');
+        const handle = document.getElementById('dockHandle');
+        if (!dock || !handle) {
+            return;
+        }
+
+        const setSheet = state => {
+            dock.dataset.sheet = state;
+            handle.setAttribute('aria-expanded', String(state === 'open'));
+            handle.setAttribute('aria-label', state === 'open' ? 'Contraer panel' : 'Expandir panel');
+        };
+
+        const setTab = (tab, { expand = false } = {}) => {
+            dock.dataset.tab = tab;
+            dock.querySelectorAll('[data-dock-tab]').forEach(button => {
+                const isActive = button.dataset.dockTab === tab;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+            document.getElementById('nearestPanel').hidden = tab !== 'nearest';
+            document.getElementById('rutas_seleccionar').hidden = tab !== 'routes';
+            if (expand) {
+                setSheet('open');
+            }
+        };
+
+        dock.querySelectorAll('[data-dock-tab]').forEach(button => {
+            button.addEventListener('click', () => {
+                const alreadyActive = dock.dataset.tab === button.dataset.dockTab;
+                // On mobile, tapping the active tab toggles the sheet; otherwise it opens it
+                if (alreadyActive && window.matchMedia('(max-width: 1023px)').matches) {
+                    setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open');
+                } else {
+                    setTab(button.dataset.dockTab, { expand: window.matchMedia('(max-width: 1023px)').matches });
+                }
+            });
+        });
+
+        handle.addEventListener('click', () => setSheet(dock.dataset.sheet === 'open' ? 'peek' : 'open'));
+
+        // "Seleccionar rutas" links inside the nearest-stop empty state
+        document.addEventListener('click', event => {
+            const link = event.target.closest('a[href="#rutas_seleccionar"]');
+            if (link) {
+                event.preventDefault();
+                setTab('routes', { expand: true });
+            }
+        });
+
+        // Keep Leaflet's bottom controls above the sheet on mobile
+        const syncDockHeight = () => {
+            const isSheet = window.matchMedia('(max-width: 1023px)').matches;
+            document.documentElement.style.setProperty('--dock-h', isSheet ? `${dock.offsetHeight}px` : '0px');
+        };
+        if (window.ResizeObserver) {
+            new ResizeObserver(syncDockHeight).observe(dock);
+        }
+        window.addEventListener('resize', syncDockHeight);
+        syncDockHeight();
+    }
 
     function initSettings() {
         const settingsButton = document.getElementById('settingsButton');
@@ -187,6 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         appearanceSelect.addEventListener('change', event => applyAppearance(event.target.value));
+
+        const animationsToggle = document.getElementById('animationsToggle');
+        if (animationsToggle) {
+            animationsToggle.checked = animationsEnabled;
+            animationsToggle.addEventListener('change', event => setAnimationsEnabled(event.target.checked));
+        }
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
             applyAppearance(document.documentElement.dataset.appearance);
         });
@@ -263,6 +354,7 @@ function initMap() {
         followUserLocation = false;
         updateLocateButtonState();
     });
+    map.on('moveend', refreshStopMarkerStyles);
     changeMapMode(currentMapMode);
     updateTrafficButtonState();
 }
@@ -514,6 +606,7 @@ function updateTrafficButtonState() {
 
 function renderRouteCards() {
     const container = document.getElementById('routesGrid');
+    const previousScroll = container.scrollTop;
     container.innerHTML = '';
 
     const visibleRoutes = TARGET_ROUTES.filter(route => {
@@ -564,6 +657,7 @@ function renderRouteCards() {
         container.innerHTML = '<div class="route-empty-state">No se encontraron rutas con esa búsqueda.</div>';
     }
 
+    container.scrollTop = previousScroll;
     renderMapLegend();
 }
 
@@ -821,10 +915,13 @@ async function fetchRouteStops(routeId) {
         }
 
         stopDataByRoute[routeId] = validStops;
+        failedStopRoutes.delete(routeId);
         updateRouteStops();
         updateNearestStopPanel();
     } catch (err) {
         console.warn(`Error al consultar paradas de ruta ${routeId}:`, err);
+        failedStopRoutes.add(routeId);
+        updateNearestStopPanel();
     }
 }
 
@@ -848,18 +945,203 @@ function updateRouteStops() {
 
         stopLayersByRoute[routeId] = stops.map(stop => {
             const stopLayer = L.circleMarker([stop.lat, stop.lng], {
-                radius: 5,
+                radius: STOP_RADIUS,
                 color: '#ffffff',
-                weight: 1.5,
+                weight: 2,
                 fillColor: routeMeta.color,
-                fillOpacity: 1
+                fillOpacity: 1,
+                renderer: getStopRenderer()
             }).bindPopup(createStopPopupContent(stop, routeMeta));
 
+            stopLayer.stopData = stop;
+            stopLayer.routeMeta = routeMeta;
             stopLayer.on('click', () => fetchStopArrivals(stop, routeMeta, stopLayer));
             stopLayer.addTo(map);
             return stopLayer;
         });
     });
+
+    refreshStopMarkerStyles();
+}
+
+function getStopRenderer() {
+    // Tolerancia extra para que tocar cerca del punto en celular también lo seleccione
+    if (!stopRenderer) {
+        // Pane propio por encima de los trayectos (overlayPane = 400) y debajo de los buses (markerPane = 600)
+        const stopsPane = map.getPane('stopsPane') || map.createPane('stopsPane');
+        stopsPane.style.zIndex = 450;
+        stopRenderer = L.canvas({ padding: 0.5, tolerance: 12, pane: 'stopsPane' });
+    }
+    return stopRenderer;
+}
+
+function refreshStopMarkerStyles() {
+    if (!map) {
+        return;
+    }
+
+    const allLayers = Object.values(stopLayersByRoute).flat();
+    if (allLayers.length === 0) {
+        stopPulseTargets = {};
+        startStopAnimation();
+        return;
+    }
+
+    const nearest = findNearestStop();
+    const center = map.getCenter();
+    const bounds = map.getBounds();
+
+    // La parada más cercana al centro de la pantalla es la que se agranda
+    let focusedLayer = null;
+    let focusedDistance = Infinity;
+    allLayers.forEach(layer => {
+        if (!bounds.contains(layer.getLatLng())) {
+            return;
+        }
+        const distance = center.distanceTo(layer.getLatLng());
+        if (distance < focusedDistance) {
+            focusedDistance = distance;
+            focusedLayer = layer;
+        }
+    });
+
+    let nearestLayer = null;
+    allLayers.forEach(layer => {
+        const isNearest = nearest
+            && layer.stopData === nearest.stop
+            && layer.routeMeta.id === nearest.route.id;
+        const isFocused = layer === focusedLayer;
+
+        // Solo se toca la capa cuando su rol cambia; evita redibujar todo el canvas en cada movimiento
+        if (isNearest) {
+            nearestLayer = layer;
+        }
+        const role = isNearest ? 'nearest' : 'normal';
+        if (layer.stopRole !== role) {
+            layer.stopRole = role;
+            layer.setStyle(isNearest
+                ? { color: '#111827', weight: 4, fillColor: '#ffffff' }
+                : { color: '#ffffff', weight: 2, fillColor: layer.routeMeta.color });
+            if (isNearest) {
+                layer.bringToFront();
+            }
+        }
+
+        const targetRadius = isNearest
+            ? (isFocused ? STOP_RADIUS_NEAREST + 3 : STOP_RADIUS_NEAREST)
+            : (isFocused ? STOP_RADIUS_FOCUSED : STOP_RADIUS);
+        if (layer.targetRadius !== targetRadius) {
+            layer.targetRadius = targetRadius;
+            if (animationsEnabled) {
+                stopAnimatingLayers.add(layer);
+            } else {
+                layer.setRadius(targetRadius);
+            }
+        }
+    });
+
+    stopPulseTargets = {
+        nearest: nearestLayer,
+        focused: focusedLayer && focusedLayer !== nearestLayer ? focusedLayer : null
+    };
+    startStopAnimation();
+}
+
+function startStopAnimation() {
+    if (!stopAnimationFrame) {
+        stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
+    }
+}
+
+function getStopHalo(key) {
+    if (!stopHalos[key]) {
+        if (!stopHaloRenderer) {
+            const haloPane = map.getPane('stopHaloPane') || map.createPane('stopHaloPane');
+            haloPane.style.zIndex = 445;
+            stopHaloRenderer = L.canvas({ padding: 0.5, pane: 'stopHaloPane' });
+        }
+        stopHalos[key] = L.circleMarker([0, 0], {
+            radius: 0,
+            weight: 3,
+            fill: false,
+            opacity: 0,
+            interactive: false,
+            renderer: stopHaloRenderer
+        });
+    }
+    return stopHalos[key];
+}
+
+function animateStopMarkers(now) {
+    stopAnimationFrame = null;
+    const animate = animationsEnabled && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let keepRunning = false;
+
+    // Crecimiento suave del radio, solo de las capas que cambiaron de tamaño
+    stopAnimatingLayers.forEach(layer => {
+        const target = layer.targetRadius;
+        const current = layer.getRadius();
+        if (!animate || Math.abs(target - current) < 0.05) {
+            layer.setRadius(target);
+            stopAnimatingLayers.delete(layer);
+            return;
+        }
+        layer.setRadius(current + (target - current) * 0.2);
+        keepRunning = true;
+    });
+
+    // Halo pulsante: rojo para la más cercana al usuario, color de ruta para la enfocada.
+    // Se redibuja a ~30 FPS, suficiente para un pulso y la mitad de costoso que 60.
+    const pulseDue = now - lastStopPulseTime >= STOP_PULSE_INTERVAL_MS;
+    if (pulseDue) {
+        lastStopPulseTime = now;
+    }
+    const pulse = (now % 1500) / 1500;
+
+    ['nearest', 'focused'].forEach(key => {
+        const layer = stopPulseTargets[key];
+        const halo = stopHalos[key] || (layer && animate && getStopHalo(key));
+
+        if (!halo) {
+            return;
+        }
+        if (!layer || !animate) {
+            if (map.hasLayer(halo)) {
+                map.removeLayer(halo);
+            }
+            return;
+        }
+
+        keepRunning = true;
+        if (!pulseDue && map.hasLayer(halo)) {
+            return;
+        }
+
+        if (!map.hasLayer(halo)) {
+            halo.addTo(map);
+        }
+        halo.setLatLng(layer.getLatLng());
+        halo.setRadius(layer.getRadius() + pulse * (key === 'nearest' ? 18 : 12));
+        halo.setStyle({
+            color: key === 'nearest' ? '#ef4444' : layer.routeMeta.color,
+            opacity: (1 - pulse) * 0.8
+        });
+    });
+
+    if (keepRunning) {
+        stopAnimationFrame = requestAnimationFrame(animateStopMarkers);
+    }
+}
+
+function setAnimationsEnabled(enabled) {
+    animationsEnabled = enabled;
+    try {
+        localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(enabled));
+    } catch (error) {
+        console.warn('No se pudo guardar la preferencia de animaciones:', error);
+    }
+    refreshStopMarkerStyles();
+    startStopAnimation();
 }
 
 function createStopPopupContent(stop, routeMeta, message = '<div class="popup-message">Haz clic en la parada para consultar llegadas.</div>') {
@@ -879,7 +1161,7 @@ function createArrivalsList(arrivals, fallbackLine) {
         <div class="arrivals-list">
             ${arrivals.map(arrival => `
                 <div class="arrival-row">
-                    <span class="arrival-line"><i class="fa-solid fa-bus"></i>${arrival.nombreLinea || fallbackLine}</span>
+                    <span class="arrival-line"><span class="line-plate">${arrival.nombreLinea || fallbackLine}</span></span>
                     <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
                 </div>
             `).join('')}
@@ -967,6 +1249,21 @@ function updateNearestStopPanel() {
     if (!nearestStop) {
         nearestStopKey = null;
         nearestArrivalsRequestId += 1;
+
+        const stopsLoading = selectedRoutes.some(
+            routeId => !stopDataByRoute[routeId] && !failedStopRoutes.has(routeId)
+        );
+        if (stopsLoading) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="empty-state-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                    <p class="empty-state-title">Cargando paradas...</p>
+                    <p class="empty-state-text">Buscando la parada más cercana en tus rutas seleccionadas.</p>
+                </div>
+            `;
+            return;
+        }
+
         container.innerHTML = `
             <div class="empty-state">
                 <span class="empty-state-icon is-warning"><i class="fa-solid fa-road-barrier"></i></span>
@@ -1017,6 +1314,7 @@ function updateNearestStopPanel() {
         }
     }
 
+    refreshStopMarkerStyles();
     fetchNearestStopArrivals(nearestStop.stop, nearestStop.route, stopKey);
 }
 
