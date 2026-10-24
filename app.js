@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsBar = dock.querySelector('.dock-tabs');
 
         // Sheet heights in px (mobile only): peek shows the tabs + a short panel, open is ~55% of the viewport
-        const peekHeight = () => handle.offsetHeight + tabsBar.offsetHeight + 128 + 2;
+        const peekHeight = () => handle.offsetHeight + tabsBar.offsetHeight + 112 + 2;
         const openHeight = () => Math.min(window.innerHeight * 0.55, 520);
 
         const applyHeight = state => {
@@ -1276,19 +1276,14 @@ function updateNearestStopPanel() {
         container.innerHTML = `
             <div data-nearest-stop-key="${stopKey}" class="nearest-stop">
                 <div class="nearest-stop-head">
-                    <div>
-                        <div class="nearest-stop-meta">
-                            <i class="fa-solid fa-person-walking"></i>
-                            A <span id="nearestStopDistance">${formatDistance(distance)}</span>
-                        </div>
-                        <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
-                    </div>
+                    <span id="nearestArrivalsStatus" class="nearest-status" data-state="loading" role="status" aria-live="polite" title="Consultando llegadas..." aria-label="Consultando llegadas...">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                    </span>
+                    <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
+                    <span class="nearest-stop-meta"><span id="nearestStopDistance">${formatDistance(distance)}</span></span>
                     <span class="route-chip" style="--route-color: ${nearestStop.route.color}; --route-ink: ${routeInk(nearestStop.route.color)}">
                         ${nearestStop.route.id}
                     </span>
-                </div>
-                <div id="nearestArrivalsStatus" class="nearest-status" data-state="loading" aria-live="polite">
-                    <i class="fa-solid fa-spinner fa-spin"></i>Consultando llegadas...
                 </div>
                 <div id="nearestArrivals">
                     <div class="arrivals-empty">Esperando información de llegadas...</div>
@@ -1337,6 +1332,12 @@ function findNearestStop() {
     return nearestStop;
 }
 
+function setArrivalsStatus(container, iconClasses, label) {
+    container.innerHTML = `<i class="fa-solid ${iconClasses}"></i>`;
+    container.title = label;
+    container.setAttribute('aria-label', label);
+}
+
 async function fetchNearestStopArrivals(stop, route, stopKey) {
     const arrivalsContainer = document.getElementById('nearestArrivals');
     const statusContainer = document.getElementById('nearestArrivalsStatus');
@@ -1346,7 +1347,7 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
 
     const requestId = ++nearestArrivalsRequestId;
     statusContainer.dataset.state = 'loading';
-    statusContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Consultando llegadas...';
+    setArrivalsStatus(statusContainer, 'fa-spinner fa-spin', 'Consultando llegadas...');
 
     try {
         const response = await fetch(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
@@ -1367,14 +1368,14 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
             ? createArrivalsList(arrivals, route.id)
             : '<div class="arrivals-empty">No hay buses próximos reportados.</div>';
         statusContainer.dataset.state = 'ok';
-        statusContainer.innerHTML = '<i class="fa-solid fa-check"></i>Llegadas actualizadas';
+        setArrivalsStatus(statusContainer, 'fa-check', 'Llegadas actualizadas');
     } catch (err) {
         console.warn(`Error al consultar llegadas de la parada ${stop.id}:`, err);
         if (requestId !== nearestArrivalsRequestId || nearestStopKey !== stopKey) {
             return;
         }
         statusContainer.dataset.state = 'error';
-        statusContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>No se pudo actualizar';
+        setArrivalsStatus(statusContainer, 'fa-triangle-exclamation', 'No se pudo actualizar');
     }
 }
 
