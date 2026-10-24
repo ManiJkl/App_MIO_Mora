@@ -78,7 +78,7 @@
 
     --text: #142030;
     --text-muted: #4f5e71;
-    --text-subtle: #7a8899;
+    --text-subtle: #5c6b7d;
 
     --success: #15803d;
     --warning: #b45309;
@@ -694,7 +694,7 @@ select option {
     justify-content: center;
     min-width: 2.6em;
     padding: 2px 8px;
-    color: #0b1017;
+    color: var(--route-ink, var(--on-accent));
     background: var(--route-color, var(--accent));
     border-radius: 7px;
     font-family: var(--font-display);
@@ -1010,7 +1010,7 @@ select option {
 }
 
 .route-card.is-selected .route-check {
-    color: #0b1017;
+    color: var(--route-ink, var(--on-accent));
     background: var(--route-color);
     border-color: var(--route-color);
 }
@@ -1332,6 +1332,17 @@ select option {
     border-top-color: var(--accent);
 }
 
+/* Light mode: route codes (panel, route cards, legend, map markers) always use white text */
+:root[data-mode="light"] .line-plate,
+:root[data-mode="light"] .route-chip,
+:root[data-mode="light"] .route-code,
+:root[data-mode="light"] .legend-item,
+:root[data-mode="light"] .route-card.is-selected .route-check,
+:root[data-mode="light"] .bus-marker-icon,
+:root[data-mode="light"] .bus-marker-label {
+    color: #ffffff;
+}
+
 /* Map markers */
 .bus-marker-custom,
 .user-location-marker {
@@ -1362,7 +1373,7 @@ select option {
     height: 30px;
     display: grid;
     place-items: center;
-    color: #0b1017;
+    color: var(--route-ink, #0b1017);
     background: var(--route-color);
     border: 2.5px solid #ffffff;
     border-radius: 50%;
@@ -1375,7 +1386,7 @@ select option {
     top: calc(100% + 3px);
     left: 50%;
     padding: 1px 6px;
-    color: #0b1017;
+    color: var(--route-ink, #0b1017);
     background: var(--route-color);
     border: 1.5px solid #ffffff;
     border-radius: 6px;

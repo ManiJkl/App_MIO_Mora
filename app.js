@@ -73,6 +73,18 @@ const ROUTE_TYPE_LABELS = {
     AL: 'ALIMENTADOR'
 };
 
+// Picks white or dark text, whichever has the higher WCAG contrast against a route's hex color
+function routeInk(hex) {
+    const channels = hex.replace('#', '').match(/../g).map(part => {
+        const value = parseInt(part, 16) / 255;
+        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    const contrastWithWhite = 1.05 / (luminance + 0.05);
+    const contrastWithDark = (luminance + 0.05) / 0.055;
+    return contrastWithWhite >= contrastWithDark ? '#ffffff' : '#0b1017';
+}
+
 const TARGET_ROUTES = ALL_ROUTE_CODES.map((routeId, index) => {
     const featuredRoute = FEATURED_ROUTES.find(route => route.id === routeId);
     if (featuredRoute) {
@@ -723,6 +735,7 @@ function renderRouteCards() {
         card.onclick = () => toggleRouteSelection(route.id);
         card.className = `route-card${isSelected ? ' is-selected' : ''}`;
         card.style.setProperty('--route-color', route.color);
+        card.style.setProperty('--route-ink', routeInk(route.color));
         card.setAttribute('aria-pressed', String(isSelected));
         card.title = route.name;
 
@@ -769,7 +782,7 @@ function renderMapLegend() {
 
     legend.innerHTML = routes.length > 0
         ? routes.map(route =>
-            `<span class="legend-item" style="--route-color: ${route.color}">${route.id}</span>`
+            `<span class="legend-item" style="--route-color: ${route.color}; --route-ink: ${routeInk(route.color)}">${route.id}</span>`
         ).join('')
         : '<span>Sin rutas en el mapa</span>';
 }
@@ -1245,7 +1258,7 @@ function createStopPopupContent(stop, routeMeta, message = '<div class="popup-me
         <div class="popup">
             <div class="popup-heading">
                 <div class="popup-title">${stop.nombre}</div>
-                <span class="route-chip" style="--route-color: ${routeMeta.color}">${routeMeta.id}</span>
+                <span class="route-chip" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">${routeMeta.id}</span>
             </div>
             ${message}
         </div>
@@ -1391,7 +1404,7 @@ function updateNearestStopPanel() {
                         </div>
                         <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
                     </div>
-                    <span class="route-chip" style="--route-color: ${nearestStop.route.color}">
+                    <span class="route-chip" style="--route-color: ${nearestStop.route.color}; --route-ink: ${routeInk(nearestStop.route.color)}">
                         ${nearestStop.route.id}
                     </span>
                 </div>
@@ -1542,7 +1555,7 @@ function updateBusMarkers() {
 
 function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
     const iconHtml = `
-        <div class="bus-marker" style="--route-color: ${routeMeta.color}">
+        <div class="bus-marker" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">
             <span class="bus-marker-pulse"></span>
             <span class="bus-marker-icon"><i class="fa-solid fa-bus"></i></span>
             <span class="bus-marker-label">${routeMeta.id}</span>
