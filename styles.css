@@ -1569,11 +1569,11 @@ select option {
 @media (max-width: 1023px) {
     .dock {
         top: auto;
-        left: 8px;
-        right: 8px;
-        bottom: max(8px, env(safe-area-inset-bottom));
+        left: 6px;
+        right: 6px;
+        bottom: max(6px, env(safe-area-inset-bottom));
         width: auto;
-        border-radius: 22px 22px 18px 18px;
+        border-radius: 18px;
         transition: height 260ms var(--ease);
     }
 
@@ -1595,7 +1595,30 @@ select option {
     }
 
     .dock-tab {
-        min-height: 46px;
+        min-height: 36px;
+        font-size: 13.5px;
+    }
+
+    .dock-panel {
+        padding: 8px 12px 4px;
+    }
+
+    .nearest-stop {
+        gap: 8px;
+    }
+
+    .nearest-stop-name {
+        margin-top: 2px;
+        font-size: 17px;
+    }
+
+    .arrival-row {
+        padding: 7px 0;
+    }
+
+    .dock-foot {
+        min-height: 34px;
+        padding: 6px 12px;
     }
 
     /* Height is set in px by initDock() so it can animate and follow the finger */
@@ -1610,7 +1633,7 @@ select option {
     }
 
     .dock-handle {
-        height: 32px;
+        height: 20px;
         cursor: grab;
     }
 
@@ -1620,7 +1643,7 @@ select option {
     }
 
     .leaflet-bottom {
-        bottom: calc(var(--dock-h, 0px) + 8px);
+        bottom: calc(var(--dock-h, 0px) + 6px);
     }
 
     .leaflet-control-zoom {
@@ -1630,16 +1653,16 @@ select option {
 
 @media (max-width: 640px) {
     .app-header {
-        padding: 10px 12px;
+        padding: 6px 10px;
     }
 
     .brand-logo {
-        width: 34px;
-        height: 34px;
+        width: 28px;
+        height: 28px;
     }
 
     .brand-title {
-        font-size: 18px;
+        font-size: 16px;
     }
 
     .brand-subtitle {
@@ -1647,7 +1670,8 @@ select option {
     }
 
     .status-badge {
-        width: 38px;
+        width: 32px;
+        height: 32px;
         justify-content: center;
         padding: 0;
     }
@@ -1657,12 +1681,22 @@ select option {
     }
 
     .map-toolbar {
-        top: 10px;
-        right: 10px;
+        top: 8px;
+        right: 8px;
+    }
+
+    .map-actions {
+        gap: 6px;
+    }
+
+    .map-button,
+    .map-select {
+        height: 36px;
+        border-radius: 10px;
     }
 
     .map-button {
-        width: 42px;
+        width: 36px;
         justify-content: center;
         padding: 0;
     }
@@ -1672,7 +1706,7 @@ select option {
     }
 
     .map-select {
-        width: 42px;
+        width: 36px;
         justify-content: center;
         padding: 0;
     }
