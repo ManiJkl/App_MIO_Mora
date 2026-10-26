@@ -144,7 +144,14 @@
         document.body.appendChild(banner);
     }
 
-    window.MioConsent = { open: openBanner };
+    // Events are dropped unless the visitor accepted analytics
+    function track(name, params) {
+        if (analyticsLoaded && window['ga-disable-' + GA_MEASUREMENT_ID] === false) {
+            gtag('event', name, params);
+        }
+    }
+
+    window.MioConsent = { open: openBanner, track: track };
 
     var saved = readConsent();
     if (saved && saved.analytics) {
