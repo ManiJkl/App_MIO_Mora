@@ -781,6 +781,9 @@ function toggleRouteSelection(routeId) {
         selectedRoutes = selectedRoutes.filter(id => id !== routeId);
     } else {
         selectedRoutes.push(routeId);
+        if (window.MioConsent) {
+            MioConsent.track('select_route', { route_id: routeId });
+        }
     }
     saveSelectedRoutes();
     renderRouteCards();
