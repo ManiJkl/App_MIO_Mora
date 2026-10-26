@@ -1769,3 +1769,30 @@ select option {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Legal links inside the settings panel */
+.settings-links {
+    display: grid;
+    gap: 6px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.settings-links a,
+.settings-links button {
+    padding: 0;
+    color: var(--text-muted);
+    background: none;
+    border: 0;
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.settings-links a:hover,
+.settings-links button:hover {
+    color: var(--accent);
+}

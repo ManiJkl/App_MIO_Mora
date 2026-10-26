@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es" data-mode="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviso legal | MIO Tracker</title>
+    <meta name="description" content="Política de privacidad, tratamiento de datos, cookies y términos de uso de MIO Tracker.">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <script>
+        (function () {
+            var root = document.documentElement;
+            try {
+                var appearance = localStorage.getItem('mio-tracker-appearance') || 'auto';
+                var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                root.dataset.mode = appearance === 'auto' ? (prefersLight ? 'light' : 'dark') : appearance;
+            } catch (error) {
+                // Storage unavailable: keep the dark default
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="consent.css">
+    <link rel="stylesheet" href="legal.css">
+    <script src="consent.js"></script>
+</head>
+<body>
+    <main class="legal">
+        <a class="legal-back" href="./">&larr; Volver al mapa</a>
+        <h1>Aviso legal de MIO Tracker</h1>
+        <p class="legal-date">Última actualización: 25 de octubre de 2026</p>
+
+        <nav class="legal-nav" aria-label="Contenido">
+            <a href="#terminos">Términos de uso</a>
+            <a href="#privacidad">Privacidad</a>
+            <a href="#cookies">Cookies y almacenamiento</a>
+            <a href="#contacto">Contacto</a>
+        </nav>
+
+        <section id="terminos">
+            <h2>Términos de uso</h2>
+            <p>MIO Tracker es una aplicación web gratuita e independiente que muestra en un mapa la posición aproximada de los buses del sistema MIO de Cali, sus rutas, paradas y tiempos estimados de llegada.</p>
+            <ul>
+                <li><strong>No es una aplicación oficial.</strong> No está afiliada, patrocinada ni avalada por Metrocali S.A., el sistema MIO ni sus operadores. Los nombres y códigos de rutas se usan solo para identificar el servicio.</li>
+                <li><strong>La información es orientativa.</strong> Las posiciones y tiempos de llegada son estimados, pueden tener retrasos o errores y no deben usarse como única fuente para decisiones importantes. Para información oficial consulta a Metrocali.</li>
+                <li><strong>Sin garantías.</strong> El servicio se ofrece «tal cual» y según disponibilidad. No garantizamos que funcione sin interrupciones ni errores, y no respondemos por daños derivados de su uso, en la medida permitida por la ley.</li>
+                <li><strong>Uso adecuado.</strong> No uses la aplicación para fines ilícitos, ni intentes sobrecargar sus servidores o extraer sus datos de forma masiva.</li>
+                <li><strong>Seguridad personal.</strong> No uses la aplicación mientras conduces ni de forma que te distraiga en la vía.</li>
+                <li><strong>Terceros.</strong> Los mapas, el tráfico y demás servicios pertenecen a sus proveedores y se rigen por sus propias condiciones: OpenStreetMap, CARTO, Esri, OpenTopoMap, TomTom, Leaflet, Font Awesome y Google Fonts.</li>
+                <li><strong>Cambios.</strong> Podemos modificar o suspender el servicio y estos términos en cualquier momento. La versión vigente es la publicada en esta página.</li>
+                <li><strong>Ley aplicable.</strong> Estos términos se rigen por las leyes de la República de Colombia.</li>
+            </ul>
+        </section>
+
+        <section id="privacidad">
+            <h2>Política de tratamiento de datos personales</h2>
+            <p>Esta política se emite conforme a la Ley 1581 de 2012, el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015) y demás normas de protección de datos personales de Colombia.</p>
+
+            <h3>Responsable del tratamiento</h3>
+            <p>Juan Camilo Morales, persona natural, Cali, Colombia. Correo: <a href="mailto:juan.morales080205@gmail.com">juan.morales080205@gmail.com</a>.</p>
+
+            <h3>Qué datos tratamos y para qué</h3>
+            <table>
+                <thead>
+                    <tr><th>Dato</th><th>Finalidad</th><th>Dónde se procesa</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Ubicación del dispositivo (solo si pulsas «Seguimiento»)</td>
+                        <td>Mostrar tu posición en el mapa y calcular la parada más cercana.</td>
+                        <td>Únicamente en tu navegador. <strong>No se envía ni se almacena</strong> en nuestros servidores ni en Google Analytics.</td>
+                    </tr>
+                    <tr>
+                        <td>Preferencias: color, apariencia, efecto glass, rutas seleccionadas y tu decisión sobre cookies</td>
+                        <td>Recordar tu configuración.</td>
+                        <td>Solo en el almacenamiento local de tu navegador.</td>
+                    </tr>
+                    <tr>
+                        <td>Datos de uso y del dispositivo (páginas vistas, tipo de navegador, ubicación aproximada por IP, identificador de cookie)</td>
+                        <td>Estadísticas para mejorar la aplicación.</td>
+                        <td>Google Analytics, <strong>solo si lo aceptas</strong>.</td>
+                    </tr>
+                    <tr>
+                        <td>Dirección IP y datos técnicos de la conexión</td>
+                        <td>Entregar la página y los datos de buses, y mantener la seguridad del servicio.</td>
+                        <td>Servidor de datos (Render) y los proveedores listados abajo; se generan al hacer cualquier solicitud web.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>No pedimos nombre, correo, teléfono ni cuentas de usuario, y no tratamos datos sensibles. La aplicación no está dirigida a menores de 18 años y no recopilamos sus datos de forma intencional.</p>
+
+            <h3>Autorización</h3>
+            <p>Al pulsar «Aceptar» en el aviso de cookies autorizas el uso de Google Analytics. Puedes rechazarlo y seguir usando la aplicación completa. Al pulsar «Seguimiento» y aceptar el permiso de tu navegador, autorizas el uso de tu ubicación según se describe arriba. Puedes retirar cualquiera de estas autorizaciones cuando quieras.</p>
+
+            <h3>Terceros y transferencia internacional</h3>
+            <p>Para funcionar, la aplicación carga recursos de terceros, que reciben tu dirección IP y datos técnicos del navegador: Render (servidor de datos), Google (Fonts y, con tu consentimiento, Analytics), unpkg y cdnjs (librerías), CARTO, OpenStreetMap, Esri y OpenTopoMap (mapas) y TomTom (capa de tráfico, solo si la activas). Varios de estos proveedores tienen servidores fuera de Colombia, por lo que tus datos técnicos pueden ser transferidos o transmitidos internacionalmente. No vendemos datos personales.</p>
+
+            <h3>Tus derechos como titular</h3>
+            <ul>
+                <li>Conocer, actualizar y rectificar tus datos.</li>
+                <li>Solicitar prueba de la autorización otorgada.</li>
+                <li>Ser informado del uso que se ha dado a tus datos.</li>
+                <li>Revocar la autorización y/o solicitar la supresión de tus datos.</li>
+                <li>Acceder gratuitamente a tus datos.</li>
+                <li>Presentar quejas ante la Superintendencia de Industria y Comercio (SIC) por infracciones a la ley.</li>
+            </ul>
+
+            <h3>Cómo ejercerlos</h3>
+            <p>Escribe a <a href="mailto:juan.morales080205@gmail.com">juan.morales080205@gmail.com</a> indicando tu solicitud. Las consultas se responden en máximo 10 días hábiles y los reclamos en máximo 15 días hábiles, prorrogables en los términos de los artículos 14 y 15 de la Ley 1581 de 2012.</p>
+
+            <h3>Conservación y seguridad</h3>
+            <p>Los datos de Google Analytics se conservan según la configuración de la propiedad de Analytics. Los datos locales permanecen en tu dispositivo hasta que los borres. Aplicamos medidas razonables de seguridad, como HTTPS, aunque ningún sistema es completamente infalible.</p>
+        </section>
+
+        <section id="cookies">
+            <h2>Cookies y almacenamiento local</h2>
+            <table>
+                <thead>
+                    <tr><th>Nombre</th><th>Tipo</th><th>Finalidad</th><th>Duración</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>mio-tracker-theme</code>, <code>mio-tracker-appearance</code>, <code>mio-tracker-glass</code></td><td>Técnica (localStorage)</td><td>Recordar tu configuración visual.</td><td>Hasta que la borres</td></tr>
+                    <tr><td><code>mio-tracker-selected-routes</code></td><td>Técnica (localStorage)</td><td>Recordar las rutas que monitoreas.</td><td>Hasta que la borres</td></tr>
+                    <tr><td><code>mio-tracker-consent</code></td><td>Técnica (localStorage)</td><td>Guardar tu decisión sobre analítica.</td><td>Hasta que la borres</td></tr>
+                    <tr><td><code>_ga</code>, <code>_ga_*</code></td><td>Analítica (Google)</td><td>Distinguir visitas y medir el uso de la aplicación. Solo con tu consentimiento.</td><td>Hasta 2 años</td></tr>
+                </tbody>
+            </table>
+            <p><button type="button" class="legal-button" onclick="MioConsent.open()">Cambiar mi preferencia de cookies</button></p>
+        </section>
+
+        <section id="contacto">
+            <h2>Contacto</h2>
+            <p>Dudas, solicitudes o reclamos: <a href="mailto:juan.morales080205@gmail.com">juan.morales080205@gmail.com</a>.</p>
+        </section>
+    </main>
+</body>
+</html>

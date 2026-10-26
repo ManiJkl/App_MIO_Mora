@@ -1,0 +1,145 @@
+/* Standalone legal page; follows the saved light/dark appearance */
+
+:root,
+:root[data-mode="dark"] {
+    color-scheme: dark;
+    --bg: #0a0f15;
+    --surface: #111821;
+    --border: #222e3c;
+    --border-strong: #334357;
+    --text: #eef3f8;
+    --text-muted: #a3b2c3;
+    --accent: #5aa9ff;
+    --font-sans: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+:root[data-mode="light"] {
+    color-scheme: light;
+    --bg: #f1f4f8;
+    --surface: #ffffff;
+    --border: #e0e6ec;
+    --border-strong: #c5ced8;
+    --text: #131a22;
+    --text-muted: #4a5868;
+    --accent: #2563eb;
+}
+
+body {
+    margin: 0;
+    color: var(--text);
+    background: var(--bg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.legal {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 24px 16px 96px;
+}
+
+.legal a {
+    color: var(--accent);
+}
+
+.legal-back {
+    display: inline-block;
+    margin-bottom: 16px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.legal h1 {
+    margin: 0 0 4px;
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.legal h2 {
+    margin: 0 0 12px;
+    padding-top: 8px;
+    font-size: 22px;
+}
+
+.legal h3 {
+    margin: 24px 0 8px;
+    font-size: 17px;
+}
+
+.legal section {
+    margin-top: 40px;
+}
+
+.legal-date {
+    margin: 0 0 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.legal-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 0;
+}
+
+.legal-nav a {
+    padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.legal ul {
+    padding-left: 20px;
+}
+
+.legal li {
+    margin-bottom: 8px;
+}
+
+.legal table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.legal th,
+.legal td {
+    min-width: 120px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.legal th {
+    background: var(--surface);
+}
+
+.legal code {
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.legal-button {
+    min-height: 40px;
+    padding: 8px 16px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.legal-button:focus-visible,
+.legal a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
