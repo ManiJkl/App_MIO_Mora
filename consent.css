@@ -1,0 +1,62 @@
+/* Cookie / analytics consent banner (shared by index.html and legal.html) */
+
+.consent-banner {
+    position: fixed;
+    left: 50%;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 3000;
+    display: grid;
+    gap: 8px;
+    width: min(440px, calc(100% - 24px));
+    padding: 16px;
+    transform: translateX(-50%);
+    color: var(--text, #eef3f8);
+    background: var(--surface, #111821);
+    border: 1px solid var(--border-strong, #334357);
+    border-radius: var(--radius-lg, 18px);
+    box-shadow: var(--shadow-lg, 0 12px 40px rgb(0 0 0 / 0.4));
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.consent-title {
+    font-size: 15px;
+}
+
+.consent-text {
+    margin: 0;
+    color: var(--text-muted, #a3b2c3);
+}
+
+.consent-text a {
+    color: var(--accent, #5aa9ff);
+}
+
+.consent-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.consent-button {
+    min-height: 40px;
+    padding: 8px 12px;
+    color: var(--text, #eef3f8);
+    background: transparent;
+    border: 1px solid var(--border-strong, #334357);
+    border-radius: var(--radius, 12px);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.consent-button:hover {
+    background: color-mix(in srgb, var(--accent, #5aa9ff) 12%, transparent);
+}
+
+.consent-button:focus-visible {
+    outline: 2px solid var(--accent, #5aa9ff);
+    outline-offset: 2px;
+}

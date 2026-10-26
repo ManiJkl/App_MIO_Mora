@@ -24,15 +24,8 @@
         })();
     </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ME2E5HNNJK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-
-        gtag('config', 'G-ME2E5HNNJK');
-    </script>
+    <!-- Google Analytics loads only after the visitor accepts (see consent.js) -->
+    <script src="consent.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,6 +40,7 @@
 
     <!-- Custom Stylesheet -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="consent.css">
 </head>
 <body>
 
@@ -111,6 +105,11 @@
                         <span class="settings-label">Efecto liquid glass</span>
                         <input id="glassToggle" type="checkbox" checked>
                     </label>
+                    <nav class="settings-links" aria-label="Información legal">
+                        <a href="legal.html#privacidad">Política de privacidad</a>
+                        <a href="legal.html#terminos">Términos de uso</a>
+                        <button type="button" onclick="MioConsent.open()">Preferencias de cookies</button>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -176,7 +175,7 @@
                     <div class="empty-state">
                         <span class="empty-state-icon"><i class="fa-solid fa-location-crosshairs"></i></span>
                         <p class="empty-state-title">Busca la parada más cercana</p>
-                        <p class="empty-state-text">Permite el acceso a tu ubicación para ver las próximas llegadas.</p>
+                        <p class="empty-state-text">Permite el acceso a tu ubicación para ver las próximas llegadas. Tu ubicación se procesa solo en tu dispositivo y no se envía a ningún servidor.</p>
                     </div>
                 </div>
             </section>
