@@ -431,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRouteCards();
     fetchActiveRoutesData();
     startLocationTracking();
+    trackActiveRoutes();
 
     // Refresh every 12 seconds
     autoRefreshTimer = setInterval(fetchActiveRoutesData, 12000);
@@ -805,6 +806,18 @@ function toggleRouteSelection(routeId) {
     updateNearestStopPanel();
     clearTimeout(routeFetchDebounceTimer);
     routeFetchDebounceTimer = setTimeout(fetchActiveRoutesData, 250);
+}
+
+// One event per route in use when the app opens, including routes saved from
+// earlier visits (select_route only fires when a route is newly added)
+function trackActiveRoutes() {
+    if (!window.MioConsent) {
+        return;
+    }
+    const routesAtOpen = [...selectedRoutes];
+    MioConsent.whenConsented(() => {
+        routesAtOpen.forEach(routeId => MioConsent.track('active_route', { route_id: routeId }));
+    });
 }
 
 function loadSelectedRoutes() {
