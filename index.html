@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Custom Stylesheet -->
     <link rel="stylesheet" href="styles.css">
@@ -61,7 +61,7 @@
                 <span id="statusText" class="status-text">Conectando...</span>
             </div>
 
-            <button type="button" onclick="fetchActiveRoutesData()" title="Refrescar ubicaciones" aria-label="Refrescar ubicaciones" class="icon-button">
+            <button type="button" data-action="refresh" title="Refrescar ubicaciones" aria-label="Refrescar ubicaciones" class="icon-button">
                 <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
             </button>
 
@@ -108,7 +108,7 @@
                     <nav class="settings-links" aria-label="Información legal">
                         <a href="legal.html#privacidad">Política de privacidad</a>
                         <a href="legal.html#terminos">Términos de uso</a>
-                        <button type="button" onclick="MioConsent.open()">Preferencias de cookies</button>
+                        <button type="button" data-action="cookies">Preferencias de cookies</button>
                     </nav>
                 </div>
             </div>
@@ -134,15 +134,15 @@
                             <option value="terrain">Terreno</option>
                         </select>
                     </label>
-                    <button type="button" onclick="recenterMap()" title="Centrar mapa en Cali" aria-label="Centrar mapa en Cali" class="map-button">
+                    <button type="button" data-action="recenter" title="Centrar mapa en Cali" aria-label="Centrar mapa en Cali" class="map-button">
                         <i class="fa-solid fa-crosshairs text-accent"></i>
                         <span class="btn-label">Centrar</span>
                     </button>
-                    <button id="trafficToggleButton" type="button" onclick="toggleTraffic()" title="Configurar tráfico TomTom" aria-label="Tráfico" class="map-button">
+                    <button id="trafficToggleButton" type="button" data-action="traffic" title="Configurar tráfico TomTom" aria-label="Tráfico" class="map-button">
                         <i id="trafficToggleIcon" class="fa-solid fa-traffic-light text-warning"></i>
                         <span id="trafficToggleText" class="btn-label">Tráfico</span>
                     </button>
-                    <button id="locateMeButton" type="button" onclick="locateUser()" title="Activar seguimiento de ubicación" aria-label="Seguir mi ubicación" class="map-button map-button-accent">
+                    <button id="locateMeButton" type="button" data-action="locate" title="Activar seguimiento de ubicación" aria-label="Seguir mi ubicación" class="map-button map-button-accent">
                         <i id="locateMeIcon" class="fa-solid fa-location-crosshairs"></i>
                         <span class="btn-label">Seguimiento</span>
                     </button>

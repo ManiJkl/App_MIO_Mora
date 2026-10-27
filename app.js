@@ -73,6 +73,19 @@ const ROUTE_TYPE_LABELS = {
     AL: 'ALIMENTADOR'
 };
 
+// Backend data goes into innerHTML templates, so escape it first
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+// fetch has no timeout option; abort slow requests so a cold backend can't hang the UI
+const FETCH_TIMEOUT_MS = 9000;
+function fetchWithTimeout(url) {
+    return fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+}
+
 // Picks white or dark text, whichever has the higher WCAG contrast against a route's hex color
 function routeInk(hex) {
     const channels = hex.replace('#', '').match(/../g).map(part => {
@@ -124,6 +137,11 @@ let trafficLayer = null;
 let trafficEnabled = false;
 let autoRefreshTimer = null;
 let routeFetchDebounceTimer = null;
+let refreshInFlight = false;
+let refreshQueued = false;
+let refreshFailures = 0;
+const AUTO_REFRESH_MS = 12000;
+const AUTO_REFRESH_MAX_BACKOFF_MS = 60000;
 let currentMapMode = 'satellite'; // Default map mode
 let userLocationMarker = null;
 let userLocationAccuracy = null;
@@ -381,6 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeSettings();
             }
         });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !settingsPanel.hidden) {
+                closeSettings();
+                settingsButton.focus();
+            }
+        });
         window.addEventListener('resize', () => {
             if (!settingsPanel.hidden) {
                 positionSettingsPanel(settingsButton, settingsPanel);
@@ -433,8 +457,36 @@ document.addEventListener('DOMContentLoaded', () => {
     startLocationTracking();
     trackActiveRoutes();
 
-    // Refresh every 12 seconds
-    autoRefreshTimer = setInterval(fetchActiveRoutesData, 12000);
+    // Don't poll the backend from a hidden tab; catch up as soon as it is visible again
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearTimeout(autoRefreshTimer);
+        } else {
+            fetchActiveRoutesData();
+        }
+    });
+
+    // Header/map buttons (replaces inline onclick handlers)
+    const actions = {
+        refresh: fetchActiveRoutesData,
+        cookies: () => window.MioConsent && MioConsent.open(),
+        recenter: recenterMap,
+        traffic: toggleTraffic,
+        locate: locateUser
+    };
+    document.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-action]');
+        if (trigger && actions[trigger.dataset.action]) {
+            actions[trigger.dataset.action]();
+        }
+    });
+
+    document.getElementById('routesGrid').addEventListener('click', event => {
+        const card = event.target.closest('.route-card');
+        if (card) {
+            toggleRouteSelection(card.dataset.routeId);
+        }
+    });
 });
 
 /* ==========================================================================
@@ -484,7 +536,7 @@ function startLocationTracking() {
     }
 
     if (!window.isSecureContext) {
-        status.innerText = 'El GPS requiere abrir la página con HTTPS en iPhone.';
+        status.innerText = 'El GPS requiere abrir la página con HTTPS.';
         return;
     }
 
@@ -579,7 +631,7 @@ function updateUserLocation(position) {
 
     document.getElementById('lastUpdated').innerText = `Ubicación encontrada · precisión ${Math.round(accuracy)} m`;
     updateNearestStopPanel();
-    resetLocateButton();
+    updateLocateButtonState();
 }
 
 function handleLocationError(error) {
@@ -587,16 +639,12 @@ function handleLocationError(error) {
     locationWatchId = null;
     followUserLocation = false;
     const messages = {
-        1: 'Permiso denegado. Activa Ubicación para Safari en Ajustes.',
-        2: 'No se pudo determinar tu ubicación. Revisa el GPS del iPhone.',
+        1: 'Permiso denegado. Activa la ubicación para este sitio en los ajustes del navegador.',
+        2: 'No se pudo determinar tu ubicación. Revisa el GPS del dispositivo.',
         3: 'La búsqueda tardó demasiado. Intenta nuevamente.'
     };
     document.getElementById('lastUpdated').innerText =
         messages[error.code] || 'No se pudo obtener tu ubicación.';
-    resetLocateButton();
-}
-
-function resetLocateButton() {
     updateLocateButtonState();
 }
 
@@ -640,11 +688,6 @@ function changeMapMode(mode) {
 }
 
 function toggleTraffic() {
-    if (!TOMTOM_API_KEY || TOMTOM_API_KEY === 'REPLACE_WITH_YOUR_TOMTOM_API_KEY') {
-        document.getElementById('lastUpdated').innerText = 'Configura TOMTOM_API_KEY en app.js para activar el tráfico.';
-        return;
-    }
-
     setTrafficEnabled(!trafficEnabled);
 }
 
@@ -686,12 +729,9 @@ function updateTrafficButtonState() {
         return;
     }
 
-    const hasApiKey = TOMTOM_API_KEY !== 'REPLACE_WITH_YOUR_TOMTOM_API_KEY';
     button.classList.toggle('is-active', trafficEnabled);
     button.setAttribute('aria-pressed', String(trafficEnabled));
-    button.title = hasApiKey
-        ? `${trafficEnabled ? 'Desactivar' : 'Activar'} tráfico TomTom`
-        : 'Configurar tráfico TomTom';
+    button.title = `${trafficEnabled ? 'Desactivar' : 'Activar'} tráfico TomTom`;
     text.innerText = trafficEnabled ? 'Tráfico activo' : 'Tráfico';
     icon.className = `fa-solid ${trafficEnabled ? 'fa-toggle-on text-success' : 'fa-traffic-light text-warning'}`;
 }
@@ -720,7 +760,7 @@ function renderRouteCards() {
 
         const card = document.createElement('button');
         card.type = 'button';
-        card.onclick = () => toggleRouteSelection(route.id);
+        card.dataset.routeId = route.id;
         card.className = `route-card${isSelected ? ' is-selected' : ''}`;
         card.style.setProperty('--route-color', route.color);
         card.style.setProperty('--route-ink', routeInk(route.color));
@@ -758,6 +798,19 @@ function renderRouteCards() {
     renderMapLegend();
 }
 
+// Bus counts change every refresh; patch them instead of rebuilding every card
+function updateRouteBusCounts() {
+    document.querySelectorAll('#routesGrid .route-card').forEach(card => {
+        const label = card.querySelector('.route-buses');
+        if (!label) {
+            return;
+        }
+        const count = (busDataByRoute[card.dataset.routeId] || []).length;
+        label.textContent = `${count} ${count === 1 ? 'bus' : 'buses'}`;
+        label.classList.toggle('has-buses', count > 0);
+    });
+}
+
 function renderMapLegend() {
     const legend = document.getElementById('mapLegend');
     if (!legend) {
@@ -783,6 +836,7 @@ function setConnectionStatus(state, text) {
 function toggleRouteSelection(routeId) {
     if (selectedRoutes.includes(routeId)) {
         selectedRoutes = selectedRoutes.filter(id => id !== routeId);
+        delete busDataByRoute[routeId];
     } else {
         selectedRoutes.push(routeId);
         if (window.MioConsent) {
@@ -793,7 +847,6 @@ function toggleRouteSelection(routeId) {
     renderRouteCards();
     updateRoutePaths();
     updateRouteStops();
-    updateNearestStopPanel();
     if (selectedRoutes.includes(routeId)) {
         if (!routePointsByRoute[routeId]) {
             fetchRoutePath(routeId);
@@ -847,7 +900,45 @@ function saveSelectedRoutes() {
    API FETCHING FROM RENDER BACKEND
    ========================================================================== */
 
+// Single-flight refresh: overlapping calls collapse into one follow-up run, and the
+// next automatic refresh is scheduled only after this one finishes (with backoff on failure)
 async function fetchActiveRoutesData() {
+    if (refreshInFlight) {
+        refreshQueued = true;
+        return;
+    }
+    refreshInFlight = true;
+    clearTimeout(autoRefreshTimer);
+
+    let succeeded = false;
+    try {
+        succeeded = await loadActiveRoutesData();
+    } catch (err) {
+        console.warn('Error al actualizar rutas:', err);
+    } finally {
+        refreshInFlight = false;
+    }
+
+    refreshFailures = succeeded ? 0 : refreshFailures + 1;
+    if (refreshQueued) {
+        refreshQueued = false;
+        fetchActiveRoutesData();
+        return;
+    }
+    scheduleAutoRefresh();
+}
+
+function scheduleAutoRefresh() {
+    clearTimeout(autoRefreshTimer);
+    if (document.hidden) {
+        return;
+    }
+    const delay = Math.min(AUTO_REFRESH_MS * 2 ** Math.min(refreshFailures, 3), AUTO_REFRESH_MAX_BACKOFF_MS);
+    autoRefreshTimer = setTimeout(fetchActiveRoutesData, delay);
+}
+
+// Resolves true when the cycle reached the backend (or there is nothing to fetch)
+async function loadActiveRoutesData() {
     const refreshIcon = document.getElementById('refreshIcon');
 
     refreshIcon.classList.add('fa-spin');
@@ -861,7 +952,7 @@ async function fetchActiveRoutesData() {
         updateRoutePaths();
         updateRouteStops();
         updateNearestStopPanel();
-        return;
+        return true;
     }
 
     let hasSuccess = false;
@@ -870,7 +961,7 @@ async function fetchActiveRoutesData() {
     // Fetch data for all selected routes concurrently
     const promises = selectedRoutes.map(async (routeId) => {
         try {
-            const response = await fetch(`${RENDER_API_BASE}/${routeId}`, { timeout: 9000 });
+            const response = await fetchWithTimeout(`${RENDER_API_BASE}/${routeId}`);
             if (response.ok) {
                 const json = await response.json();
                 
@@ -931,9 +1022,15 @@ async function fetchActiveRoutesData() {
         document.getElementById('lastUpdated').innerText = 'Reintentando conexión...';
     }
 
-    renderRouteCards();
+    Object.keys(busDataByRoute).forEach(routeId => {
+        if (!selectedRoutes.includes(routeId)) {
+            delete busDataByRoute[routeId];
+        }
+    });
+    updateRouteBusCounts();
     updateBusMarkers();
     updateNearestStopPanel();
+    return hasSuccess;
 }
 
 async function fetchRoutePath(routeId) {
@@ -944,7 +1041,7 @@ async function fetchRoutePath(routeId) {
     const routePathId = encodeURIComponent(routeId.toLowerCase());
 
     try {
-        const response = await fetch(`${RENDER_ROUTE_BASE}/${routePathId}`);
+        const response = await fetchWithTimeout(`${RENDER_ROUTE_BASE}/${routePathId}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -1005,7 +1102,7 @@ async function fetchRouteStops(routeId) {
     const routePathId = encodeURIComponent(routeId.toLowerCase());
 
     try {
-        const response = await fetch(`${RENDER_STOPS_BASE}/${routePathId}`);
+        const response = await fetchWithTimeout(`${RENDER_STOPS_BASE}/${routePathId}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -1159,7 +1256,7 @@ function createStopPopupContent(stop, routeMeta, message = '<div class="popup-me
     return `
         <div class="popup">
             <div class="popup-heading">
-                <div class="popup-title">${stop.nombre}</div>
+                <div class="popup-title">${escapeHtml(stop.nombre)}</div>
                 <span class="route-chip" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">${routeMeta.id}</span>
             </div>
             ${message}
@@ -1172,8 +1269,8 @@ function createArrivalsList(arrivals, fallbackLine) {
         <div class="arrivals-list">
             ${arrivals.map(arrival => `
                 <div class="arrival-row">
-                    <span class="arrival-line"><span class="line-plate">${arrival.nombreLinea || fallbackLine}</span></span>
-                    <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                    <span class="arrival-line"><span class="line-plate">${escapeHtml(arrival.nombreLinea || fallbackLine)}</span></span>
+                    <span class="arrival-time">${escapeHtml(arrival.cuentaRegresiva || 'Sin tiempo')}</span>
                 </div>
             `).join('')}
         </div>
@@ -1198,7 +1295,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
 
     try {
         const stopId = encodeURIComponent(stop.id);
-        const response = await fetch(`${RENDER_ARRIVALS_BASE}/${stopId}`);
+        const response = await fetchWithTimeout(`${RENDER_ARRIVALS_BASE}/${stopId}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -1298,14 +1395,14 @@ function updateNearestStopPanel() {
     if (nearestStopKey !== stopKey) {
         nearestStopKey = stopKey;
         container.innerHTML = `
-            <div data-nearest-stop-key="${stopKey}" class="nearest-stop">
+            <div data-nearest-stop-key="${escapeHtml(stopKey)}" class="nearest-stop">
                 <div class="nearest-stop-head">
                     <div class="nearest-stop-info">
                         <div class="nearest-stop-meta">
                             <i class="fa-solid fa-person-walking"></i>
                             A <span id="nearestStopDistance">${formatDistance(distance)}</span>
                         </div>
-                        <h3 class="nearest-stop-name">${nearestStop.stop.nombre}</h3>
+                        <h3 class="nearest-stop-name">${escapeHtml(nearestStop.stop.nombre)}</h3>
                     </div>
                     <span class="route-chip" style="--route-color: ${nearestStop.route.color}; --route-ink: ${routeInk(nearestStop.route.color)}">
                         ${nearestStop.route.id}
@@ -1388,7 +1485,7 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
     setArrivalsStatus(statusContainer, 'fa-spinner fa-spin', 'Consultando llegadas...');
 
     try {
-        const response = await fetch(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
+        const response = await fetchWithTimeout(`${RENDER_ARRIVALS_BASE}/${encodeURIComponent(stop.id)}`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -1473,6 +1570,11 @@ function updateBusMarkers() {
 }
 
 function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
+    if (mapMarkers[key]) {
+        mapMarkers[key].setLatLng([lat, lng]);
+        return;
+    }
+
     const iconHtml = `
         <div class="bus-marker" style="--route-color: ${routeMeta.color}; --route-ink: ${routeInk(routeMeta.color)}">
             <span class="bus-marker-pulse"></span>
@@ -1488,17 +1590,9 @@ function renderBusMarker(key, lat, lng, routeMeta, busCode, bus) {
         iconAnchor: [14, 14]
     });
 
-    if (mapMarkers[key]) {
-        mapMarkers[key].setLatLng([lat, lng]);
-        mapMarkers[key].setIcon(customIcon);
-        mapMarkers[key].setPopupContent(createBusPopupContent(routeMeta, busCode, bus));
-    } else {
-        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
-
-        marker.bindPopup(createBusPopupContent(routeMeta, busCode, bus));
-
-        mapMarkers[key] = marker;
-    }
+    const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+    marker.bindPopup(createBusPopupContent(routeMeta, busCode, bus));
+    mapMarkers[key] = marker;
 }
 
 function createBusPopupContent(routeMeta, busCode, bus) {
