@@ -133,6 +133,9 @@ let locationRequestInProgress = false;
 let followUserLocation = false;
 let nearestStopKey = null;
 let nearestArrivalsRequestId = 0;
+let nearestArrivalsFetchKey = null;
+let nearestArrivalsFetchedAt = 0;
+const NEAREST_ARRIVALS_MIN_INTERVAL_MS = 10000;
 let filteredUserLocation = null;
 
 const GPS_FILTER_MIN_ALPHA = 0.15;
@@ -882,9 +885,13 @@ async function fetchActiveRoutesData() {
         }
     });
 
-    await Promise.all(promises);
-    await Promise.all(selectedRoutes.map(routeId => fetchRoutePath(routeId)));
-    await Promise.all(selectedRoutes.map(routeId => fetchRouteStops(routeId)));
+    // Paths and stops don't depend on bus data, so load them in parallel
+    // instead of waiting for the (possibly cold-started) buses endpoint.
+    await Promise.all([
+        ...promises,
+        ...selectedRoutes.map(routeId => fetchRoutePath(routeId)),
+        ...selectedRoutes.map(routeId => fetchRouteStops(routeId))
+    ]);
 
     refreshIcon.classList.remove('fa-spin');
 
@@ -1239,6 +1246,7 @@ function updateNearestStopPanel() {
     const nearestStop = findNearestStop();
     if (!nearestStop) {
         nearestStopKey = null;
+        nearestArrivalsFetchKey = null;
         nearestArrivalsRequestId += 1;
 
         const stopsLoading = selectedRoutes.some(
@@ -1353,6 +1361,15 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
         return;
     }
 
+    // GPS and route updates call this constantly; don't restart (and discard) a
+    // request already in flight or fetched recently for the same stop.
+    const now = Date.now();
+    if (nearestArrivalsFetchKey === stopKey && now - nearestArrivalsFetchedAt < NEAREST_ARRIVALS_MIN_INTERVAL_MS) {
+        return;
+    }
+    nearestArrivalsFetchKey = stopKey;
+    nearestArrivalsFetchedAt = now;
+
     const requestId = ++nearestArrivalsRequestId;
     statusContainer.dataset.state = 'loading';
     setArrivalsStatus(statusContainer, 'fa-spinner fa-spin', 'Consultando llegadas...');
@@ -1382,6 +1399,7 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
         if (requestId !== nearestArrivalsRequestId || nearestStopKey !== stopKey) {
             return;
         }
+        nearestArrivalsFetchedAt = 0;
         statusContainer.dataset.state = 'error';
         setArrivalsStatus(statusContainer, 'fa-triangle-exclamation', 'No se pudo actualizar');
     }
