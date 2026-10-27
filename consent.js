@@ -7,6 +7,7 @@
     var CONSENT_STORAGE_KEY = 'mio-tracker-consent';
     var GA_MEASUREMENT_ID = 'G-ME2E5HNNJK';
     var analyticsLoaded = false;
+    var consentCallbacks = [];
 
     window.dataLayer = window.dataLayer || [];
     function gtag() { window.dataLayer.push(arguments); }
@@ -52,6 +53,8 @@
         script.async = true;
         script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
         document.head.appendChild(script);
+
+        consentCallbacks.splice(0).forEach(function (callback) { callback(); });
     }
 
     function removeAnalyticsCookies() {
@@ -151,7 +154,16 @@
         }
     }
 
-    window.MioConsent = { open: openBanner, track: track };
+    // Runs the callback now if analytics is on, or once the visitor accepts it
+    function whenConsented(callback) {
+        if (analyticsLoaded) {
+            callback();
+        } else {
+            consentCallbacks.push(callback);
+        }
+    }
+
+    window.MioConsent = { open: openBanner, track: track, whenConsented: whenConsented };
 
     var saved = readConsent();
     if (saved && saved.analytics) {
