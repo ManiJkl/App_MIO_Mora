@@ -11,8 +11,8 @@ compilación ni instalar dependencias.
 ## Funcionalidades
 
 ### Rutas y buses
-- Catálogo de más de 100 rutas MIO: troncales (`T`), expresas (`E`),
-  pretroncales (`P`) y alimentadoras (`A` / `AL`).
+- Catálogo de más de 60 rutas MIO: troncales (`T`), expresas (`E`),
+  pretroncales (`P`) y alimentadoras (`A`).
 - Selección múltiple: puedes monitorear varias rutas a la vez, cada una con su
   propio color.
 - Buscador por código, nombre o tipo de ruta, con contador de resultados.
