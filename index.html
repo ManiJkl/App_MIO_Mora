@@ -6,6 +6,13 @@
     <title>MIO Tracker</title>
     <meta name="description" content="Ubicación en tiempo real de los buses del MIO en Cali.">
     <link rel="icon" type="image/png" href="icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="theme-color" content="#0a0f15">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MIO Tracker">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
     <!-- Apply saved theme before first paint to avoid a flash -->
     <script>
@@ -210,5 +217,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Main Application JavaScript -->
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js').catch(function () {});
+            });
+        }
+    </script>
 </body>
 </html>
