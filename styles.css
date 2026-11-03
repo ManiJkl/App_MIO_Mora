@@ -1792,6 +1792,12 @@ select option {
     cursor: pointer;
 }
 
+.settings-version {
+    margin: 12px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 .settings-links a:hover,
 .settings-links button:hover {
     color: var(--accent);
