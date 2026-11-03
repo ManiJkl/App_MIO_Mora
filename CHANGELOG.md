@@ -3,6 +3,11 @@
 Versionado `MAYOR.MENOR.PARCHE`: cada funcionalidad o refactor sube el MENOR,
 cada corrección sube el PARCHE. La versión vive en `version.js`.
 
+## 1.13.0
+- Avisos de llegada: toca la campana junto a un bus en una parada y recibe una
+  notificación cuando falten pocos minutos (configurable en Configuración).
+  Con push funciona aunque la app esté cerrada; si no, avisa con la app abierta.
+
 ## 1.12.1
 - Ícono de pantalla de inicio cuadrado (sin círculo) y versión oscura del logo
   para la pestaña del navegador y el encabezado en modo oscuro.
