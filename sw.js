@@ -1,7 +1,9 @@
 // Network-first for the app's own files, so updates always win when online
 // and the shell still opens offline. Cross-origin requests (API, map tiles,
 // CDNs) are never intercepted.
-const CACHE = 'mio-tracker-shell-v1';
+importScripts('version.js');
+
+const CACHE = `mio-tracker-${APP_VERSION}`;
 const SHELL = [
     './',
     'index.html',
@@ -9,6 +11,7 @@ const SHELL = [
     'styles.css',
     'consent.js',
     'consent.css',
+    'version.js',
     'icon.png',
     'manifest.webmanifest'
 ];

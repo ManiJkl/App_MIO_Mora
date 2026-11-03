@@ -32,6 +32,7 @@
     </script>
 
     <!-- Google Analytics loads only after the visitor accepts (see consent.js) -->
+    <script src="version.js"></script>
     <script src="consent.js"></script>
 
     <!-- Fonts -->
@@ -117,6 +118,7 @@
                         <a href="legal.html#terminos">Términos de uso</a>
                         <button type="button" onclick="MioConsent.open()">Preferencias de cookies</button>
                     </nav>
+                    <p class="settings-version">Versión <span id="appVersion">-</span></p>
                 </div>
             </div>
         </div>
@@ -218,6 +220,7 @@
     <!-- Main Application JavaScript -->
     <script src="app.js"></script>
     <script>
+        document.getElementById('appVersion').textContent = APP_VERSION;
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('sw.js').catch(function () {});
