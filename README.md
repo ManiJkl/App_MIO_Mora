@@ -164,3 +164,9 @@ servicios cartográficos externos.
 - La clave de TomTom viaja en las peticiones del navegador a TomTom, por lo que
   debe restringirse a los dominios autorizados desde el portal de TomTom.
 - La página incluye Google Analytics (`gtag.js`) para métricas de uso.
+
+## Instalar como app (PWA)
+
+Sirviendo la web por HTTPS, en Safari (iPhone) usa Compartir → *Añadir a pantalla de inicio*.
+Se abre a pantalla completa con su propio ícono y la interfaz carga sin conexión
+(los datos en vivo siguen necesitando internet).
