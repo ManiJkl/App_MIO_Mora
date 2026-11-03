@@ -244,6 +244,11 @@ code {
     box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
 }
 
+/* Dark variant of the logo (no light circle behind it) */
+[data-mode="dark"] .brand-logo {
+    content: url("icon-dark.png");
+}
+
 .brand-text {
     min-width: 0;
 }
