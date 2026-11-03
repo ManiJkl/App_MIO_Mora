@@ -3,6 +3,10 @@
 Versionado `MAYOR.MENOR.PARCHE`: cada funcionalidad o refactor sube el MENOR,
 cada corrección sube el PARCHE. La versión vive en `version.js`.
 
+## 1.12.1
+- Ícono de pantalla de inicio cuadrado (sin círculo) y versión oscura del logo
+  para la pestaña del navegador y el encabezado en modo oscuro.
+
 ## 1.12.0
 - Número de versión visible en Configuración.
 

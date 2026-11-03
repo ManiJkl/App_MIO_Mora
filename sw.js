@@ -13,6 +13,7 @@ const SHELL = [
     'consent.css',
     'version.js',
     'icon.png',
+    'icon-dark.png',
     'manifest.webmanifest'
 ];
 
