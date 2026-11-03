@@ -8,6 +8,7 @@ const SHELL = [
     './',
     'index.html',
     'app.js',
+    'notifications.js',
     'styles.css',
     'consent.js',
     'consent.css',
@@ -44,5 +45,37 @@ self.addEventListener('fetch', (event) => {
                 return response;
             })
             .catch(() => caches.match(request).then((cached) => cached || caches.match('./')))
+    );
+});
+
+// Web Push: the backend sends a payload when a watched bus is about to arrive.
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (err) { /* empty or unreadable payload: show a generic notice */ }
+
+    event.waitUntil(Promise.all([
+        self.registration.showNotification(data.title || 'MIO Tracker', {
+            body: data.body || 'Tu bus está por llegar.',
+            tag: data.tag,
+            icon: 'icon-192.png',
+            badge: 'icon-192.png',
+            data: { stopId: data.stopId }
+        }),
+        // If the app is open, let it drop the alert from its list.
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+            windows.forEach((client) => client.postMessage({ type: 'alert-fired', alertId: data.alertId }));
+        })
+    ]));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+            const open = windows[0];
+            return open ? open.focus() : self.clients.openWindow('./');
+        })
     );
 });

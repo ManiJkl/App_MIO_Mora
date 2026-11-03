@@ -29,6 +29,15 @@ compilación ni instalar dependencias.
   seleccionadas), la distancia a pie y sus llegadas.
 - La parada más cercana se resalta en el mapa.
 
+### Avisos de llegada
+- Junto a cada llegada hay una campana: tócala para recibir una notificación
+  cuando ese bus (línea + parada) esté a pocos minutos.
+- El umbral (1, 2, 3, 5 o 10 min) y los avisos activos se gestionan en
+  Configuración. Cada aviso suena una vez y se elimina; caduca a las 3 h.
+- Con la app instalada y cerrada llegan por Web Push desde el backend. Si el
+  navegador no admite push o el backend no responde, avisa mientras la app esté
+  abierta.
+
 ### Ubicación (GPS)
 - Botón **Seguimiento** para ubicarte en el mapa y que este te siga.
 - Círculo de precisión alrededor de tu posición.
@@ -138,6 +147,8 @@ Las constantes principales están al inicio de `app.js`:
 | `index.html` | Estructura de la interfaz y carga de recursos externos. |
 | `styles.css` | Estilos, temas de color, modo claro/oscuro y diseño responsivo. |
 | `app.js` | Estado, mapa, rutas, paradas, GPS y consumo de la API. |
+| `notifications.js` | Avisos de llegada: permisos, suscripción push y avisos locales. |
+| `sw.js` | Caché sin conexión y recepción de notificaciones push. |
 | `icon.png` | Logo y favicon. |
 
 ## Backend
@@ -151,6 +162,10 @@ El frontend consume el backend `mio-backend-mora`
 | `/api/recorrido/{ruta}` | Puntos del recorrido. |
 | `/api/paradas/{ruta}` | Paradas de la ruta. |
 | `/api/llegadas/{parada}` | Próximas llegadas a una parada. |
+| `/api/push/key` | Clave pública VAPID para suscribirse a push. |
+| `/api/push/alerts` (POST) | Registra un aviso `{subscription, alert}`. |
+| `/api/push/alerts/list` (POST) | Avisos activos de una suscripción. |
+| `/api/push/alerts/delete` (POST) | Quita un aviso (o la suscripción si no hay `id`). |
 
 La disponibilidad y exactitud de los datos dependen de ese backend y de los
 servicios cartográficos externos.
@@ -170,3 +185,6 @@ servicios cartográficos externos.
 Sirviendo la web por HTTPS, en Safari (iPhone) usa Compartir → *Añadir a pantalla de inicio*.
 Se abre a pantalla completa con su propio ícono y la interfaz carga sin conexión
 (los datos en vivo siguen necesitando internet).
+
+En iPhone, las notificaciones push solo funcionan con la app añadida a la pantalla
+de inicio (iOS 16.4 o superior).

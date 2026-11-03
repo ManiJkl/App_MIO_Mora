@@ -114,6 +114,21 @@
                         <span class="settings-label">Efecto liquid glass</span>
                         <input id="glassToggle" type="checkbox" checked>
                     </label>
+                    <section class="settings-field" aria-labelledby="alertsHeading">
+                        <h3 id="alertsHeading" class="settings-label">Avisos de llegada</h3>
+                        <label class="settings-inline">
+                            <span>Avisar cuando falten</span>
+                            <select id="alertMinutes" class="select">
+                                <option value="1">1 min</option>
+                                <option value="2">2 min</option>
+                                <option value="3">3 min</option>
+                                <option value="5">5 min</option>
+                                <option value="10">10 min</option>
+                            </select>
+                        </label>
+                        <ul id="alertsList" class="alerts-list"></ul>
+                        <p id="alertsStatus" class="settings-hint"></p>
+                    </section>
                     <nav class="settings-links" aria-label="Información legal">
                         <a href="legal.html#privacidad">Política de privacidad</a>
                         <a href="legal.html#terminos">Términos de uso</a>
@@ -219,6 +234,7 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Main Application JavaScript -->
+    <script src="notifications.js"></script>
     <script src="app.js"></script>
     <script>
         document.getElementById('appVersion').textContent = APP_VERSION;

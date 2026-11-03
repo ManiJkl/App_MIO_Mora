@@ -1162,13 +1162,30 @@ function createStopPopupContent(stop, routeMeta, message = '<div class="popup-me
     `;
 }
 
-function createArrivalsList(arrivals, fallbackLine) {
+function createAlertButton(stop, line) {
+    if (!stop || !stop.id || !line) {
+        return '';
+    }
+    const escapeAttr = value => String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const active = MioAlerts.has(stop.id, line);
+    return `<button type="button" class="arrival-alert${active ? ' is-active' : ''}"
+        data-stop-id="${escapeAttr(stop.id)}" data-stop-name="${escapeAttr(stop.nombre)}" data-line="${escapeAttr(line)}"
+        aria-pressed="${active}" title="${active ? 'Quitar aviso' : 'Avisarme cuando esté cerca'}"
+        aria-label="Avisarme cuando ${escapeAttr(line)} esté cerca">
+        <i class="${active ? 'fa-solid' : 'fa-regular'} fa-bell"></i>
+    </button>`;
+}
+
+function createArrivalsList(arrivals, fallbackLine, stop) {
     return `
         <div class="arrivals-list">
             ${arrivals.map(arrival => `
                 <div class="arrival-row">
                     <span class="arrival-line"><span class="line-plate">${arrival.nombreLinea || fallbackLine}</span></span>
-                    <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                    <span class="arrival-end">
+                        <span class="arrival-time">${arrival.cuentaRegresiva || 'Sin tiempo'}</span>
+                        ${createAlertButton(stop, String(arrival.nombreLinea || fallbackLine || '').toUpperCase())}
+                    </span>
                 </div>
             `).join('')}
         </div>
@@ -1204,7 +1221,7 @@ async function fetchStopArrivals(stop, routeMeta, stopLayer) {
             : [];
 
         const arrivalsContent = arrivals.length > 0
-            ? createArrivalsList(sortArrivalsByCountdown(arrivals), routeMeta.id)
+            ? createArrivalsList(sortArrivalsByCountdown(arrivals), routeMeta.id, stop)
             : '<div class="arrivals-empty">No hay buses próximos reportados.</div>';
 
         stopLayer.setPopupContent(createStopPopupContent(stop, routeMeta, arrivalsContent));
@@ -1398,7 +1415,7 @@ async function fetchNearestStopArrivals(stop, route, stopKey) {
         }
 
         arrivalsContainer.innerHTML = arrivals.length > 0
-            ? createArrivalsList(arrivals, route.id)
+            ? createArrivalsList(arrivals, route.id, stop)
             : '<div class="arrivals-empty">No hay buses próximos reportados.</div>';
         statusContainer.dataset.state = 'ok';
         setArrivalsStatus(statusContainer, 'fa-check', 'Llegadas actualizadas');
